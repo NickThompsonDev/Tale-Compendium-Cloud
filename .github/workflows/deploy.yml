@@ -71,19 +71,19 @@ jobs:
     - name: Terraform Init and Apply
       working-directory: terraform
       env:
-        GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
-        STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-        CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-        CLERK_WEBHOOK_SECRET: ${{ secrets.CLERK_WEBHOOK_SECRET }}
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        DATABASE_USER: ${{ secrets.DATABASE_USER }}
-        DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-        DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
-        NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-        NEXT_PUBLIC_CLERK_SIGN_IN_URL: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
-        NEXT_PUBLIC_CLERK_SIGN_UP_URL: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
+        TF_VAR_GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
+        TF_VAR_STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+        TF_VAR_NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+        TF_VAR_CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+        TF_VAR_NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+        TF_VAR_CLERK_WEBHOOK_SECRET: ${{ secrets.CLERK_WEBHOOK_SECRET }}
+        TF_VAR_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        TF_VAR_DATABASE_USER: ${{ secrets.DATABASE_USER }}
+        TF_VAR_DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        TF_VAR_DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+        TF_VAR_NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+        TF_VAR_NEXT_PUBLIC_CLERK_SIGN_IN_URL: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
+        TF_VAR_NEXT_PUBLIC_CLERK_SIGN_UP_URL: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
       run: |
         terraform init
         terraform apply -auto-approve
