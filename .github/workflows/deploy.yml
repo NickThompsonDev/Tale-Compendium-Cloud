@@ -11,38 +11,35 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Authenticate to Google Cloud
-      uses: google-github-actions/auth@v1
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+      uses: actions/checkout@v2
 
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v1
       with:
+        version: 'latest'
         project_id: ${{ secrets.GCP_PROJECT_ID }}
-        install_components: kubectl
 
     - name: Set up Docker to use the gcloud command-line tool as a credential helper
       run: |
         gcloud auth configure-docker
 
-    - name: Build Docker image for webapp
+    - name: Build Docker image
       run: |
-        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:$GITHUB_SHA -f ./webapp/Dockerfile ./webapp
+        docker build \
+          --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }} \
+          --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
+          --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }} \
+          --build-arg CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} \
+          --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+          --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
+          --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
+          --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
+          --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
+          -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/tale-compendium:$GITHUB_SHA .
 
-    - name: Build Docker image for api
+    - name: Push Docker image to GCR
       run: |
-        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:$GITHUB_SHA -f ./api/Dockerfile ./api
-
-    - name: Push Docker image to GCR for webapp
-      run: |
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:$GITHUB_SHA
-
-    - name: Push Docker image to GCR for api
-      run: |
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:$GITHUB_SHA
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/tale-compendium:$GITHUB_SHA
 
     - name: Deploy to GKE
       run: |
@@ -55,16 +52,6 @@ jobs:
     - name: Terraform Init and Apply
       env:
         GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
-        STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-        CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-        CLERK_WEBHOOK_SECRET: ${{ secrets.CLERK_WEBHOOK_SECRET }}
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        DATABASE_USER: ${{ secrets.DATABASE_USER }}
-        DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-        DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
-        NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
       run: |
         terraform init
         terraform apply -auto-approve -var="google_credentials=${{ secrets.GCP_SA_KEY }}"
