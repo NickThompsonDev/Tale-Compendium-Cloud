@@ -7,8 +7,7 @@ provider "google" {
 provider "kubernetes" {
   host                   = "https://${var.k8s_cluster_endpoint}"
   cluster_ca_certificate = var.k8s_cluster_ca_certificate
-  token                  = var.google_credentials # This assumes the Google token has been added correctly
-  load_config_file       = false # Ensures that it doesn't try to use local kubeconfig
+  token                  = var.google_credentials
 }
 
 resource "kubernetes_deployment" "webapp" {
