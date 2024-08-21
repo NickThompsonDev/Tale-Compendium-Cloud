@@ -46,6 +46,9 @@ jobs:
     - name: Build Docker image for api
       run: |
         docker build \
+          --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
+          --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
+          --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
           -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:$GITHUB_SHA \
           -f ./api/Dockerfile ./api
 
