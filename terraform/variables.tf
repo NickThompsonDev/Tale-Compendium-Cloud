@@ -15,17 +15,6 @@ variable "cluster_name" {
   default     = "tale-compendium-cluster"
 }
 
-variable "k8s_cluster_endpoint" {
-  description = "The external endpoint of the GKE cluster"
-  type        = string
-  default     = "34.75.38.234" # Use the external endpoint of your cluster
-}
-
-variable "k8s_cluster_ca_certificate" {
-  description = "The base64 encoded cluster certificate"
-  type        = string
-}
-
 variable "node_count" {
   description = "Number of nodes in the GKE cluster"
   type        = number
@@ -47,6 +36,16 @@ variable "docker_image_tag" {
   description = "Tag for the Docker image"
   type        = string
   default     = "latest"
+}
+
+variable "k8s_cluster_ca_certificate" {
+  description = "The base64 encoded cluster certificate"
+  type        = string
+}
+
+variable "k8s_cluster_endpoint" {
+  description = "The cluster endpoint"
+  type        = string
 }
 
 # Database variables

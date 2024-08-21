@@ -4,11 +4,8 @@ provider "google" {
   region      = var.region
 }
 
-data "google_client_config" "default" {}
-
 provider "kubernetes" {
-  host                   = google_container_cluster.primary.endpoint
-  token                  = data.google_client_config.default.access_token
+  host                   = var.k8s_cluster_endpoint
   cluster_ca_certificate = var.k8s_cluster_ca_certificate
 }
 
@@ -36,7 +33,7 @@ resource "kubernetes_deployment" "webapp" {
       spec {
         container {
           name  = "webapp"
-          image = "gcr.io/${var.project_id}/webapp:latest"
+          image = "gcr.io/${var.project_id}/webapp:${var.docker_image_tag}"
 
           env {
             name  = "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
