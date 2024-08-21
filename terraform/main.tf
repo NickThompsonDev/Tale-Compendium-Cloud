@@ -1,15 +1,13 @@
-# main.tf
-
 provider "google" {
-  credentials = file("<path_to_your_service_account_json>")
+  credentials = var.google_credentials
   project     = var.project_id
   region      = var.region
 }
 
 provider "kubernetes" {
   host                   = google_container_cluster.primary.endpoint
-  token                  = data.google_client_config.default.access_token
   cluster_ca_certificate = base64decode(google_container_cluster.primary.master_auth.0.cluster_ca_certificate)
+  token                  = google_client_config.default.access_token
 }
 
 resource "google_container_cluster" "primary" {
@@ -62,7 +60,7 @@ resource "kubernetes_deployment" "webapp" {
       spec {
         container {
           name  = "webapp"
-          image = "gcr.io/${var.project_id}/tale-compendium:latest"
+          image = "gcr.io/${var.project_id}/webapp:latest"
 
           env {
             name  = "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
@@ -156,7 +154,7 @@ resource "kubernetes_deployment" "api" {
       spec {
         container {
           name  = "api"
-          image = "gcr.io/${var.project_id}/api:${var.docker_image_tag}" # Reference GCR image
+          image = "gcr.io/${var.project_id}/api:latest"
 
           port {
             container_port = 5000
@@ -273,4 +271,12 @@ resource "kubernetes_service" "database" {
 
     type = "ClusterIP"
   }
+}
+
+output "webapp_service_ip" {
+  value = kubernetes_service.webapp.status[0].load_balancer[0].ingress[0].ip
+}
+
+output "api_service_ip" {
+  value = kubernetes_service.api.status[0].load_balancer[0].ingress[0].ip
 }
