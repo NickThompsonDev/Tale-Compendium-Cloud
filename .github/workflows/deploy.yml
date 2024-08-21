@@ -70,8 +70,7 @@ jobs:
       env:
         GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
         TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-        TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}  # Added Stripe publishable key
-        TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+        TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
         TF_VAR_clerk_secret_key: ${{ secrets.CLERK_SECRET_KEY }}
         TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
         TF_VAR_database_user: ${{ secrets.DATABASE_USER }}

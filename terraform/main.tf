@@ -4,10 +4,12 @@ provider "google" {
   region      = var.region
 }
 
+data "google_client_config" "default" {}
+
 provider "kubernetes" {
   host                   = google_container_cluster.primary.endpoint
+  token                  = data.google_client_config.default.access_token
   cluster_ca_certificate = base64decode(google_container_cluster.primary.master_auth.0.cluster_ca_certificate)
-  token                  = google_client_config.default.access_token
 }
 
 resource "google_container_cluster" "primary" {
@@ -154,7 +156,7 @@ resource "kubernetes_deployment" "api" {
       spec {
         container {
           name  = "api"
-          image = "gcr.io/${var.project_id}/api:latest"
+          image = "gcr.io/${var.project_id}/api:${var.docker_image_tag}"
 
           port {
             container_port = 5000
@@ -167,17 +169,17 @@ resource "kubernetes_deployment" "api" {
 
           env {
             name  = "DATABASE_USER"
-            value = var.db_username
+            value = var.database_user
           }
 
           env {
             name  = "DATABASE_PASSWORD"
-            value = var.db_password
+            value = var.database_password
           }
 
           env {
             name  = "DATABASE_NAME"
-            value = var.db_instance_name
+            value = var.database_name
           }
         }
       }
@@ -232,17 +234,17 @@ resource "kubernetes_deployment" "database" {
 
           env {
             name  = "POSTGRES_DB"
-            value = var.db_instance_name
+            value = var.database_name
           }
 
           env {
             name  = "POSTGRES_USER"
-            value = var.db_username
+            value = var.database_user
           }
 
           env {
             name  = "POSTGRES_PASSWORD"
-            value = var.db_password
+            value = var.database_password
           }
 
           port {
