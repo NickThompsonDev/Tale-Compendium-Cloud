@@ -66,7 +66,7 @@ jobs:
       uses: hashicorp/setup-terraform@v1
 
     - name: Terraform Init and Apply
-      working-directory: terraform  # Specify the directory where your Terraform files are located
+      working-directory: terraform
       env:
         GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
         TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
@@ -76,7 +76,10 @@ jobs:
         TF_VAR_database_user: ${{ secrets.DATABASE_USER }}
         TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
         TF_VAR_database_name: ${{ secrets.DATABASE_NAME }}
-        TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}  # Add this line
+        TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
+        TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_region: ${{ secrets.GKE_REGION }}
+        TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
       run: |
         terraform init
         terraform apply -auto-approve
