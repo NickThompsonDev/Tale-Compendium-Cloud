@@ -1,10 +1,24 @@
+# main.tf
+
+provider "google" {
+  credentials = file("<path_to_your_service_account_json>")
+  project     = var.project_id
+  region      = var.region
+}
+
+provider "kubernetes" {
+  host                   = google_container_cluster.primary.endpoint
+  token                  = data.google_client_config.default.access_token
+  cluster_ca_certificate = base64decode(google_container_cluster.primary.master_auth.0.cluster_ca_certificate)
+}
+
 resource "google_container_cluster" "primary" {
-  name               = "my-cluster"
+  name               = var.cluster_name
   location           = var.region
-  initial_node_count = 3
+  initial_node_count = var.node_count
 
   node_config {
-    machine_type = "e2-medium"
+    machine_type = var.node_machine_type
   }
 }
 
@@ -14,14 +28,14 @@ resource "google_container_node_pool" "primary_nodes" {
   cluster    = google_container_cluster.primary.name
 
   node_config {
-    preemptible  = true
+    preemptible  = false
     machine_type = "e2-medium"
     oauth_scopes = [
       "https://www.googleapis.com/auth/cloud-platform",
     ]
   }
 
-  initial_node_count = 3
+  initial_node_count = var.node_count
 }
 
 resource "kubernetes_deployment" "webapp" {
@@ -48,7 +62,47 @@ resource "kubernetes_deployment" "webapp" {
       spec {
         container {
           name  = "webapp"
-          image = "webapp:latest"
+          image = "gcr.io/${var.project_id}/tale-compendium:latest"
+
+          env {
+            name  = "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+            value = var.stripe_publishable_key
+          }
+
+          env {
+            name  = "STRIPE_SECRET_KEY"
+            value = var.stripe_secret_key
+          }
+
+          env {
+            name  = "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
+            value = var.clerk_publishable_key
+          }
+
+          env {
+            name  = "CLERK_SECRET_KEY"
+            value = var.clerk_secret_key
+          }
+
+          env {
+            name  = "OPENAI_API_KEY"
+            value = var.openai_api_key
+          }
+
+          env {
+            name  = "DATABASE_USER"
+            value = var.database_user
+          }
+
+          env {
+            name  = "DATABASE_PASSWORD"
+            value = var.database_password
+          }
+
+          env {
+            name  = "DATABASE_NAME"
+            value = var.database_name
+          }
 
           port {
             container_port = 3000
@@ -102,10 +156,30 @@ resource "kubernetes_deployment" "api" {
       spec {
         container {
           name  = "api"
-          image = "api:latest"
+          image = "gcr.io/${var.project_id}/api:${var.docker_image_tag}" # Reference GCR image
 
           port {
             container_port = 5000
+          }
+
+          env {
+            name  = "DATABASE_HOST"
+            value = "database"
+          }
+
+          env {
+            name  = "DATABASE_USER"
+            value = var.db_username
+          }
+
+          env {
+            name  = "DATABASE_PASSWORD"
+            value = var.db_password
+          }
+
+          env {
+            name  = "DATABASE_NAME"
+            value = var.db_instance_name
           }
         }
       }
@@ -160,17 +234,17 @@ resource "kubernetes_deployment" "database" {
 
           env {
             name  = "POSTGRES_DB"
-            value = "dbname"
+            value = var.db_instance_name
           }
 
           env {
             name  = "POSTGRES_USER"
-            value = "user"
+            value = var.db_username
           }
 
           env {
             name  = "POSTGRES_PASSWORD"
-            value = "password"
+            value = var.db_password
           }
 
           port {

@@ -1,11 +1,11 @@
 provider "google" {
-  credentials = file("<path_to_your_service_account_json>")
-  project     = "<your_project_id>"
-  region      = "<your_region>"
-  zone        = "<your_zone>"
+  credentials = var.google_credentials
+  project     = var.project_id
+  region      = var.region
 }
 
 provider "kubernetes" {
-  config_path    = "~/.kube/config"
-  config_context = "gke_<your_project_id>_<your_region>_<your_cluster_name>"
+  host                   = google_container_cluster.primary.endpoint
+  cluster_ca_certificate = base64decode(google_container_cluster.primary.master_auth.0.cluster_ca_certificate)
+  token                  = google_client_config.default.access_token
 }
