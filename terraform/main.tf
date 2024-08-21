@@ -4,10 +4,16 @@ provider "google" {
   region      = var.region
 }
 
+data "google_client_config" "default" {}
+
 provider "kubernetes" {
   host                   = "https://${var.k8s_cluster_endpoint}"
   cluster_ca_certificate = var.k8s_cluster_ca_certificate
-  token                  = var.google_credentials
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "gke-gcloud-auth-plugin"
+    args        = ["--use-rest-credential"]
+  }
 }
 
 resource "kubernetes_deployment" "webapp" {
@@ -34,7 +40,7 @@ resource "kubernetes_deployment" "webapp" {
       spec {
         container {
           name  = "webapp"
-          image = "gcr.io/${var.project_id}/webapp:${var.docker_image_tag}"
+          image = "gcr.io/${var.project_id}/webapp:latest"
 
           env {
             name  = "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"

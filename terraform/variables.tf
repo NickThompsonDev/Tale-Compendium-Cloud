@@ -38,13 +38,13 @@ variable "docker_image_tag" {
   default     = "latest"
 }
 
-variable "k8s_cluster_ca_certificate" {
-  description = "The base64 encoded cluster certificate"
+variable "k8s_cluster_endpoint" {
+  description = "The Kubernetes cluster endpoint"
   type        = string
 }
 
-variable "k8s_cluster_endpoint" {
-  description = "The cluster endpoint"
+variable "k8s_cluster_ca_certificate" {
+  description = "The base64 encoded cluster certificate"
   type        = string
 }
 
