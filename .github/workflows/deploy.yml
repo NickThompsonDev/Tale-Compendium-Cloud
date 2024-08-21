@@ -11,27 +11,38 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
 
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v1
       with:
-        version: 'latest'
         project_id: ${{ secrets.GCP_PROJECT_ID }}
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
-        export_default_credentials: true
+        install_components: kubectl
 
     - name: Set up Docker to use the gcloud command-line tool as a credential helper
       run: |
         gcloud auth configure-docker
 
-    - name: Build Docker image
+    - name: Build Docker image for webapp
       run: |
-        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/tale-compendium:$GITHUB_SHA .
+        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:$GITHUB_SHA -f ./webapp/Dockerfile ./webapp
 
-    - name: Push Docker image to GCR
+    - name: Build Docker image for api
       run: |
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/tale-compendium:$GITHUB_SHA
+        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:$GITHUB_SHA -f ./api/Dockerfile ./api
+
+    - name: Push Docker image to GCR for webapp
+      run: |
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:$GITHUB_SHA
+
+    - name: Push Docker image to GCR for api
+      run: |
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:$GITHUB_SHA
 
     - name: Deploy to GKE
       run: |
