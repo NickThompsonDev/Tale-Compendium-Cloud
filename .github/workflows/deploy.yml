@@ -11,7 +11,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@v1
@@ -46,9 +46,6 @@ jobs:
     - name: Build Docker image for api
       run: |
         docker build \
-          --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
-          --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
-          --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
           -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:$GITHUB_SHA \
           -f ./api/Dockerfile ./api
 
@@ -83,7 +80,7 @@ jobs:
         NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
       run: |
         terraform init
-        terraform apply -auto-approve -var="google_credentials=${{ secrets.GCP_SA_KEY }}"
+        terraform apply -auto-approve
 
     - name: Cleanup old images
       run: |
