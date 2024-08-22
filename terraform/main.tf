@@ -5,10 +5,11 @@ provider "google" {
 }
 
 provider "kubernetes" {
-  host                   = "https://${var.k8s_cluster_endpoint}"
+  host                   = var.k8s_cluster_endpoint
   token                  = var.k8s_access_token
-  cluster_ca_certificate = base64decode(replace(replace(replace(var.k8s_cluster_ca_certificate, "\n", ""), "-----BEGIN CERTIFICATE-----", ""), "-----END CERTIFICATE-----", ""))
+  cluster_ca_certificate = var.k8s_cluster_ca_certificate
 }
+
 
 resource "kubernetes_deployment" "webapp" {
   metadata {
