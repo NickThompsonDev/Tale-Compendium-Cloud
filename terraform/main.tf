@@ -5,7 +5,7 @@ provider "google" {
 }
 
 provider "kubernetes" {
-  host                   = var.k8s_host
+  host                   = "https://${var.k8s_cluster_endpoint}"
   token                  = var.k8s_access_token
   cluster_ca_certificate = base64decode(var.k8s_cluster_ca_certificate)
 }
