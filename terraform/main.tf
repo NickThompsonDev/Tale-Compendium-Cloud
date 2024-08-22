@@ -5,35 +5,9 @@ provider "google" {
 }
 
 provider "kubernetes" {
-  host                   = google_container_cluster.primary.endpoint
+  host                   = var.k8s_host
   token                  = var.k8s_access_token
-  cluster_ca_certificate = base64decode(google_container_cluster.primary.master_auth.0.cluster_ca_certificate)
-}
-
-resource "google_container_cluster" "primary" {
-  name               = var.cluster_name
-  location           = var.region
-  initial_node_count = var.node_count
-
-  node_config {
-    machine_type = var.node_machine_type
-  }
-}
-
-resource "google_container_node_pool" "primary_nodes" {
-  name       = "primary-node-pool"
-  location   = var.region
-  cluster    = google_container_cluster.primary.name
-
-  node_config {
-    preemptible  = false
-    machine_type = "e2-medium"
-    oauth_scopes = [
-      "https://www.googleapis.com/auth/cloud-platform",
-    ]
-  }
-
-  initial_node_count = var.node_count
+  cluster_ca_certificate = base64decode(var.k8s_cluster_ca_certificate)
 }
 
 resource "kubernetes_deployment" "webapp" {
