@@ -48,6 +48,11 @@ variable "k8s_cluster_ca_certificate" {
   type        = string
 }
 
+variable "k8s_access_token" {
+  description = "The Kubernetes access token"
+  type        = string
+}
+
 # Database variables
 variable "database_name" {
   description = "The name of the database"

@@ -86,6 +86,7 @@ jobs:
         TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
         TF_VAR_k8s_cluster_ca_certificate: ${{ secrets.K8S_CLUSTER_CA_CERTIFICATE }}
         TF_VAR_k8s_cluster_endpoint: ${{ secrets.K8S_CLUSTER_ENDPOINT }}
+        TF_VAR_k8s_access_token: ${{ secrets.K8S_ACCESS_TOKEN }}
       run: |
         terraform init
         terraform apply -auto-approve
