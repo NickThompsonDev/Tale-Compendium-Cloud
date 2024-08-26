@@ -131,8 +131,4 @@ jobs:
         TF_VAR_k8s_access_token: ${{ env.TF_VAR_k8s_access_token }}
       run: |
         terraform init
-        terraform apply -auto-approve
-
-    - name: Cleanup old images
-      run: |
-        gcloud container images list-tags gcr.io/${{ secrets.GCP_PROJECT_ID }}/tale-compendium --limit=5 --sort-by=TIMESTAMP --filter="NOT tags:*" --format='get(digest)' | while read digest; do gcloud container images delete gcr.io/${{ secrets.GCP_PROJECT_ID }}/tale-compendium@$digest --quiet; done
+        terraform apply -replace="kubernetes_deployment.webapp" -replace="kubernetes_service.webapp" -replace="kubernetes_deployment.api" -replace="kubernetes_service.api" -replace="kubernetes_deployment.database" -replace="kubernetes_service.database" -auto-approve
