@@ -53,16 +53,18 @@ jobs:
         REGION=${{ secrets.GKE_REGION }}
         PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
 
-        # Fetch Cluster Endpoint
+        # Fetch Cluster Endpoint and ensure it's a proper HTTPS URL
         ENDPOINT=$(gcloud container clusters describe $CLUSTER_NAME --region $REGION --project $PROJECT_ID --format='value(endpoint)')
+        HOST=https://$ENDPOINT
 
-        # Fetch Cluster CA Certificate
+        # Fetch Cluster CA Certificate (this is base64 encoded)
         CA_CERT=$(gcloud container clusters describe $CLUSTER_NAME --region $REGION --project $PROJECT_ID --format='value(masterAuth.clusterCaCertificate)')
 
         # Fetch Kubernetes Access Token
         ACCESS_TOKEN=$(gcloud auth application-default print-access-token)
 
-        echo "TF_VAR_k8s_cluster_endpoint=$ENDPOINT" >> $GITHUB_ENV
+        # Export environment variables for Terraform
+        echo "TF_VAR_k8s_cluster_endpoint=$HOST" >> $GITHUB_ENV
         echo "TF_VAR_k8s_cluster_ca_certificate=$CA_CERT" >> $GITHUB_ENV
         echo "TF_VAR_k8s_access_token=$ACCESS_TOKEN" >> $GITHUB_ENV
 
