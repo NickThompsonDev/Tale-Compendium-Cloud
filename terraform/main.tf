@@ -84,8 +84,6 @@ resource "kubernetes_deployment" "webapp" {
       }
     }
   }
-  wait_for_rollout = true
-  timeout = "10m"
 }
 
 resource "kubernetes_service" "webapp" {
