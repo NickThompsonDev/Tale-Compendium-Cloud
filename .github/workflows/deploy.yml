@@ -117,6 +117,22 @@ jobs:
 
     - name: Import Existing Kubernetes Resources
       working-directory: terraform
+      env:
+        TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+        TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+        TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+        TF_VAR_clerk_secret_key: ${{ secrets.CLERK_SECRET_KEY }}
+        TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+        TF_VAR_database_user: ${{ secrets.DATABASE_USER }}
+        TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
+        TF_VAR_database_name: ${{ secrets.DATABASE_NAME }}
+        TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
+        TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_region: ${{ secrets.GKE_REGION }}
+        TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
+        TF_VAR_k8s_cluster_ca_certificate: ${{ env.TF_VAR_k8s_cluster_ca_certificate }}
+        TF_VAR_k8s_cluster_endpoint: ${{ env.TF_VAR_k8s_cluster_endpoint }}
+        TF_VAR_k8s_access_token: ${{ env.TF_VAR_k8s_access_token }}
       run: |
         terraform import kubernetes_deployment.webapp default/webapp-deployment || true
         terraform import kubernetes_deployment.api default/api-deployment || true
