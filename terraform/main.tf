@@ -17,7 +17,7 @@ resource "kubernetes_deployment" "webapp" {
   }
 
   spec {
-    replicas = 3
+    replicas = 1
 
     selector {
       match_labels = {
@@ -84,6 +84,8 @@ resource "kubernetes_deployment" "webapp" {
       }
     }
   }
+  wait_for_rollout = true
+  timeout = "10m"
 }
 
 resource "kubernetes_service" "webapp" {
@@ -111,7 +113,7 @@ resource "kubernetes_deployment" "api" {
   }
 
   spec {
-    replicas = 2
+    replicas = 1
 
     selector {
       match_labels = {
