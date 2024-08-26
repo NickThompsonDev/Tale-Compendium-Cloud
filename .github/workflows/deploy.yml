@@ -28,6 +28,16 @@ jobs:
       run: |
         gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
 
+    - name: Print Current Kubernetes Context (Debug)
+      run: |
+        kubectl config current-context
+
+    - name: Print Environment Variables (Debug)
+      run: |
+        echo "Cluster Endpoint: $TF_VAR_k8s_cluster_endpoint"
+        echo "CA Certificate: $TF_VAR_k8s_cluster_ca_certificate"
+        echo "Access Token: $TF_VAR_k8s_access_token"
+
     - name: Delete existing Kubernetes resources
       run: |
         kubectl delete deployment webapp-deployment || true
