@@ -112,9 +112,11 @@ jobs:
       uses: hashicorp/setup-terraform@v1
 
     - name: Initialize Terraform
+      working-directory: terraform
       run: terraform init
 
     - name: Import Existing Kubernetes Resources
+      working-directory: terraform
       run: |
         terraform import kubernetes_deployment.webapp default/webapp-deployment || true
         terraform import kubernetes_deployment.api default/api-deployment || true
@@ -123,7 +125,7 @@ jobs:
         terraform import kubernetes_service.api default/api-service || true
         terraform import kubernetes_service.database default/database-service || true
 
-    - name: Terraform Init and Apply
+    - name: Terraform Apply
       working-directory: terraform
       env:
         TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
