@@ -28,24 +28,41 @@ jobs:
       run: |
         gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
 
-    - name: Print Current Kubernetes Context (Debug)
+    - name: Set up Kubernetes Service Account
       run: |
-        kubectl config current-context
+        kubectl create serviceaccount terraform-deployer -n default || true
+        kubectl create clusterrolebinding terraform-deployer-binding --clusterrole=cluster-admin --serviceaccount=default:terraform-deployer || true
 
-    - name: Print Environment Variables (Debug)
+    - name: Ensure Service Account Token Exists
       run: |
-        echo "Cluster Endpoint: $TF_VAR_k8s_cluster_endpoint"
-        echo "CA Certificate: $TF_VAR_k8s_cluster_ca_certificate"
-        echo "Access Token: $TF_VAR_k8s_access_token"
+        kubectl apply -f - <<EOF
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: terraform-deployer-token
+          namespace: default
+          annotations:
+            kubernetes.io/service-account.name: terraform-deployer
+        type: kubernetes.io/service-account-token
+        EOF
 
-    - name: Delete existing Kubernetes resources
+    - name: Fetch Cluster Details
+      id: cluster_info
       run: |
-        kubectl delete deployment webapp-deployment || true
-        kubectl delete deployment api-deployment || true
-        kubectl delete deployment database-deployment || true
-        kubectl delete service webapp-service || true
-        kubectl delete service api-service || true
-        kubectl delete service database-service || true
+        CLUSTER_NAME=${{ secrets.GKE_CLUSTER_NAME }}
+        REGION=${{ secrets.GKE_REGION }}
+        PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
+
+        ENDPOINT=$(gcloud container clusters describe $CLUSTER_NAME --region $REGION --project $PROJECT_ID --format='value(endpoint)')
+        HOST=https://$ENDPOINT
+
+        CA_CERT=$(gcloud container clusters describe $CLUSTER_NAME --region $REGION --project $PROJECT_ID --format='value(masterAuth.clusterCaCertificate)')
+        
+        ACCESS_TOKEN=$(gcloud auth application-default print-access-token)
+
+        echo "TF_VAR_k8s_cluster_endpoint=$HOST" >> $GITHUB_ENV
+        echo "TF_VAR_k8s_cluster_ca_certificate=$CA_CERT" >> $GITHUB_ENV
+        echo "TF_VAR_k8s_access_token=$ACCESS_TOKEN" >> $GITHUB_ENV
 
     - name: Set up Docker to use the gcloud command-line tool as a credential helper
       run: |
@@ -83,14 +100,23 @@ jobs:
       run: |
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:$GITHUB_SHA
 
-    - name: Deploy to GKE
+    - name: Delete existing deployments and services (Cleanup)
+      run: |
+        kubectl delete deployment webapp-deployment || true
+        kubectl delete deployment api-deployment || true
+        kubectl delete deployment database-deployment || true
+        kubectl delete service webapp-service || true
+        kubectl delete service api-service || true
+        kubectl delete service database-service || true
+
+    - name: Apply Kubernetes manifests
       run: |
         kubectl apply -f k8s/
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v1
 
-    - name: Terraform Init and Apply
+    - name: Terraform Init and Apply (with Import)
       working-directory: terraform
       env:
         TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
@@ -110,8 +136,10 @@ jobs:
         TF_VAR_k8s_access_token: ${{ env.TF_VAR_k8s_access_token }}
       run: |
         terraform init
+        terraform import kubernetes_deployment.webapp default/webapp-deployment || true
+        terraform import kubernetes_deployment.api default/api-deployment || true
+        terraform import kubernetes_deployment.database default/database-deployment || true
+        terraform import kubernetes_service.webapp default/webapp-service || true
+        terraform import kubernetes_service.api default/api-service || true
+        terraform import kubernetes_service.database default/database-service || true
         terraform apply -auto-approve
-
-    - name: Apply HPA Configuration
-      run: |
-        kubectl apply -f hpa.yaml
