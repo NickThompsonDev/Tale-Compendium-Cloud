@@ -24,6 +24,10 @@ jobs:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
         install_components: kubectl
 
+    - name: Configure kubectl to use the GKE cluster
+      run: |
+        gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
+
     - name: Set up Kubernetes Service Account
       run: |
         kubectl create serviceaccount terraform-deployer -n default || true
@@ -100,7 +104,6 @@ jobs:
 
     - name: Deploy to GKE
       run: |
-        gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
         kubectl apply -f k8s/
 
     - name: Setup Terraform
