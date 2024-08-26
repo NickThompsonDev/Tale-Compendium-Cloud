@@ -111,6 +111,18 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v1
 
+    - name: Initialize Terraform
+      run: terraform init
+
+    - name: Import Existing Kubernetes Resources
+      run: |
+        terraform import kubernetes_deployment.webapp default/webapp-deployment || true
+        terraform import kubernetes_deployment.api default/api-deployment || true
+        terraform import kubernetes_deployment.database default/database-deployment || true
+        terraform import kubernetes_service.webapp default/webapp-service || true
+        terraform import kubernetes_service.api default/api-service || true
+        terraform import kubernetes_service.database default/database-service || true
+
     - name: Terraform Init and Apply
       working-directory: terraform
       env:
@@ -130,5 +142,8 @@ jobs:
         TF_VAR_k8s_cluster_endpoint: ${{ env.TF_VAR_k8s_cluster_endpoint }}
         TF_VAR_k8s_access_token: ${{ env.TF_VAR_k8s_access_token }}
       run: |
-        terraform init
-        terraform apply -replace="kubernetes_deployment.webapp" -replace="kubernetes_service.webapp" -replace="kubernetes_deployment.api" -replace="kubernetes_service.api" -replace="kubernetes_deployment.database" -replace="kubernetes_service.database" -auto-approve
+        terraform apply -auto-approve
+
+    - name: Cleanup Old Docker Images
+      run: |
+        gcloud container images list-tags gcr.io/${{ secrets.GCP_PROJECT_ID }}/tale-compendium --limit=5 --sort-by=TIMESTAMP --filter="NOT tags:*" --format='get(digest)' | while read digest; do gcloud container images delete gcr.io/${{ secrets.GCP_PROJECT_ID }}/tale-compendium@$digest --quiet; done
