@@ -28,45 +28,14 @@ jobs:
       run: |
         gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
 
-    - name: Set up Kubernetes Service Account
+    - name: Delete existing Kubernetes resources
       run: |
-        kubectl create serviceaccount terraform-deployer -n default || true
-        kubectl create clusterrolebinding terraform-deployer-binding --clusterrole=cluster-admin --serviceaccount=default:terraform-deployer || true
-
-    - name: Ensure Service Account Token Exists
-      run: |
-        kubectl apply -f - <<EOF
-        apiVersion: v1
-        kind: Secret
-        metadata:
-          name: terraform-deployer-token
-          namespace: default
-          annotations:
-            kubernetes.io/service-account.name: terraform-deployer
-        type: kubernetes.io/service-account-token
-        EOF
-
-    - name: Fetch Cluster Details
-      id: cluster_info
-      run: |
-        CLUSTER_NAME=${{ secrets.GKE_CLUSTER_NAME }}
-        REGION=${{ secrets.GKE_REGION }}
-        PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
-
-        # Fetch Cluster Endpoint and ensure it's a proper HTTPS URL
-        ENDPOINT=$(gcloud container clusters describe $CLUSTER_NAME --region $REGION --project $PROJECT_ID --format='value(endpoint)')
-        HOST=https://$ENDPOINT
-
-        # Fetch Cluster CA Certificate (this is base64 encoded)
-        CA_CERT=$(gcloud container clusters describe $CLUSTER_NAME --region $REGION --project $PROJECT_ID --format='value(masterAuth.clusterCaCertificate)')
-
-        # Fetch Kubernetes Access Token
-        ACCESS_TOKEN=$(gcloud auth application-default print-access-token)
-
-        # Export environment variables for Terraform
-        echo "TF_VAR_k8s_cluster_endpoint=$HOST" >> $GITHUB_ENV
-        echo "TF_VAR_k8s_cluster_ca_certificate=$CA_CERT" >> $GITHUB_ENV
-        echo "TF_VAR_k8s_access_token=$ACCESS_TOKEN" >> $GITHUB_ENV
+        kubectl delete deployment webapp-deployment || true
+        kubectl delete deployment api-deployment || true
+        kubectl delete deployment database-deployment || true
+        kubectl delete service webapp-service || true
+        kubectl delete service api-service || true
+        kubectl delete service database-service || true
 
     - name: Set up Docker to use the gcloud command-line tool as a credential helper
       run: |
@@ -103,10 +72,6 @@ jobs:
     - name: Push Docker image to GCR for api
       run: |
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:$GITHUB_SHA
-
-    - name: Destroy existing Kubernetes resources
-      run: |
-        terraform destroy -auto-approve
 
     - name: Deploy to GKE
       run: |
