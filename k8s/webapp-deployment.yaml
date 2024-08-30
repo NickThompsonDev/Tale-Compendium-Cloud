@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   name: webapp-deployment
 spec:
+  replicas: 3
   selector:
     matchLabels:
       app: webapp
@@ -13,19 +14,19 @@ spec:
     spec:
       containers:
       - name: webapp
-        image: gcr.io/${GCP_PROJECT_ID}/webapp:latest
+        image: gcr.io/nodal-clock-433208/webapp:{{GITHUB_SHA}}
         ports:
         - containerPort: 3000
         env:
         - name: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-          value: "${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}"
+          value: "{{NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}}"
         - name: STRIPE_SECRET_KEY
-          value: "${STRIPE_SECRET_KEY}"
+          value: "{{STRIPE_SECRET_KEY}}"
         - name: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-          value: "${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}"
+          value: "{{NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}}"
         - name: CLERK_SECRET_KEY
-          value: "${CLERK_SECRET_KEY}"
+          value: "{{CLERK_SECRET_KEY}}"
         - name: OPENAI_API_KEY
-          value: "${OPENAI_API_KEY}"
+          value: "{{OPENAI_API_KEY}}"
         - name: NEXT_PUBLIC_API_URL
-          value: "${NEXT_PUBLIC_API_URL}"
+          value: "{{NEXT_PUBLIC_API_URL}}"
