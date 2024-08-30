@@ -89,3 +89,10 @@ variable "openai_api_key" {
   type        = string
   sensitive   = true
 }
+
+variable "service_account_email" {
+  description = "The email of the GCP service account"
+  type        = string
+  default     = "github-actions-deployer@nodal-clock-433208-b4.iam.gserviceaccount.com"
+}
+

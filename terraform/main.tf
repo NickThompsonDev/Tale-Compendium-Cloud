@@ -1,5 +1,5 @@
 provider "google" {
-  credentials = jsondecode(base64decode(var.google_credentials))
+  credentials = var.google_credentials
   project     = var.project_id
   region      = var.region
 }
@@ -9,9 +9,9 @@ data "google_client_config" "provider" {}
 
 # Retrieve an access token for the specified service account
 data "google_service_account_access_token" "my_kubernetes_sa" {
-  target_service_account = data.google_client_config.provider.email  # This will use the same service account
+  target_service_account = var.service_account_email
   scopes                 = ["userinfo-email", "cloud-platform"]
-  lifetime               = "3600s"  # 1-hour token lifetime
+  lifetime               = "3600s"
 }
 
 # Retrieve the GKE cluster details
