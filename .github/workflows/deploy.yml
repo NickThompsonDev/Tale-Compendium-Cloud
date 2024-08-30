@@ -103,4 +103,4 @@ jobs:
         terraform import kubernetes_service.webapp "default/webapp-service" || true
         terraform import kubernetes_service.api "default/api-service" || true
         terraform import kubernetes_service.database "default/database-service" || true
-        terraform apply -auto-approve
+        terraform apply -auto-approve || terraform apply -refresh-only
