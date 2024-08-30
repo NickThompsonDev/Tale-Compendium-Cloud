@@ -39,22 +39,6 @@ variable "docker_image_tag" {
   default     = "latest"
 }
 
-variable "k8s_cluster_endpoint" {
-  description = "The Kubernetes cluster endpoint"
-  type        = string
-}
-
-variable "k8s_cluster_ca_certificate" {
-  description = "The base64 encoded cluster certificate"
-  type        = string
-}
-
-variable "k8s_access_token" {
-  description = "The Kubernetes access token"
-  type        = string
-  sensitive   = true
-}
-
 # Database variables
 variable "database_name" {
   description = "The name of the database"

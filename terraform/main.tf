@@ -4,8 +4,15 @@ provider "google" {
   region      = var.region
 }
 
-# Use the same service account authenticated in the GitHub Actions workflow
+# Use the same service account that is authenticated in the GitHub Actions workflow
 data "google_client_config" "provider" {}
+
+# Retrieve an access token for the specified service account
+data "google_service_account_access_token" "my_kubernetes_sa" {
+  target_service_account = data.google_client_config.provider.email  # This will use the same service account
+  scopes                 = ["userinfo-email", "cloud-platform"]
+  lifetime               = "3600s"  # 1-hour token lifetime
+}
 
 # Retrieve the GKE cluster details
 data "google_container_cluster" "my_cluster" {
@@ -16,13 +23,13 @@ data "google_container_cluster" "my_cluster" {
 # Configure the Kubernetes provider with the service account token
 provider "kubernetes" {
   host  = "https://${data.google_container_cluster.my_cluster.endpoint}"
-  token = data.google_client_config.provider.access_token
+  token = data.google_service_account_access_token.my_kubernetes_sa.access_token
   cluster_ca_certificate = base64decode(
     data.google_container_cluster.my_cluster.master_auth[0].cluster_ca_certificate,
   )
 }
 
-# Webapp deployment
+# Example Kubernetes deployment for webapp
 resource "kubernetes_deployment" "webapp" {
   metadata {
     name = "webapp-deployment"
