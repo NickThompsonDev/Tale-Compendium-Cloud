@@ -47,22 +47,27 @@ jobs:
           --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
           --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
           --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
-          -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:$GITHUB_SHA \
+          -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} \
           -f ./webapp/Dockerfile ./webapp
 
     - name: Build Docker image for api
       run: |
         docker build \
-          -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:$GITHUB_SHA \
+          -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} \
           -f ./api/Dockerfile ./api
 
     - name: Push Docker image to GCR for webapp
       run: |
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:$GITHUB_SHA
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
 
     - name: Push Docker image to GCR for api
       run: |
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:$GITHUB_SHA
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
+
+    - name: Replace image tags in Kubernetes manifests
+      run: |
+        sed -i 's#image: gcr.io/nodal-clock-433208/webapp:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}#' k8s/webapp-deployment.yaml
+        sed -i 's#image: gcr.io/nodal-clock-433208/api:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}#' k8s/api-deployment.yaml
 
     - name: Delete existing deployments and services (Cleanup)
       run: |
@@ -73,10 +78,8 @@ jobs:
         kubectl delete service api-service || true
         kubectl delete service database-service || true
 
-    - name: Apply Kubernetes manifests with SHA
+    - name: Apply Kubernetes manifests
       run: |
-        sed -i "s/{{GITHUB_SHA}}/${{GITHUB_SHA}}/g" k8s/webapp-deployment.yaml
-        sed -i "s/{{GITHUB_SHA}}/${{GITHUB_SHA}}/g" k8s/api-deployment.yaml
         kubectl apply -f k8s/
 
     - name: Setup Terraform
@@ -106,9 +109,3 @@ jobs:
         terraform import kubernetes_service.api "default/api-service" || true
         terraform import kubernetes_service.database "default/database-service" || true
         terraform apply -auto-approve || terraform apply -refresh-only
-
-    - name: Cleanup - Destroy Resources and Remove Images
-      run: |
-        terraform destroy -auto-approve
-        gcloud container images list-tags gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp --format='get(digest)' | xargs -I {} gcloud container images delete -q gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp@sha256:{}
-        gcloud container images list-tags gcr.io/${{ secrets.GCP_PROJECT_ID }}/api --format='get(digest)' | xargs -I {} gcloud container images delete -q gcr.io/${{ secrets.GCP_PROJECT_ID }}/api@sha256:{}
