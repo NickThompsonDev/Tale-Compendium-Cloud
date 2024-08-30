@@ -53,6 +53,10 @@ jobs:
     - name: Build Docker image for api
       run: |
         docker build \
+          --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
+          --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
+          --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
+          --build-arg DATABASE_HOST=database-service \
           -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} \
           -f ./api/Dockerfile ./api
 
@@ -64,10 +68,10 @@ jobs:
       run: |
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
 
-    - name: Replace image tags in Kubernetes manifests
+    - name: Update Kubernetes Deployment Manifests
       run: |
-        sed -i 's#image: gcr.io/nodal-clock-433208/webapp:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}#' k8s/webapp-deployment.yaml
-        sed -i 's#image: gcr.io/nodal-clock-433208/api:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}#' k8s/api-deployment.yaml
+        sed -i 's#image: gcr.io/nodal-clock-433208/webapp:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:$GITHUB_SHA#' k8s/webapp-deployment.yaml
+        sed -i 's#image: gcr.io/nodal-clock-433208/api:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:$GITHUB_SHA#' k8s/api-deployment.yaml
 
     - name: Delete existing deployments and services (Cleanup)
       run: |
