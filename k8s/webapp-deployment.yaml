@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: webapp
-        image: gcr.io/nodal-clock-433208/webapp:$GITHUB_SHA
+        image: gcr.io/nodal-clock-433208/webapp:latest
         ports:
         - containerPort: 3000
         env:

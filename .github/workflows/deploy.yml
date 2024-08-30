@@ -70,8 +70,8 @@ jobs:
 
     - name: Update Kubernetes Deployment Manifests
       run: |
-        sed -i 's#image: gcr.io/nodal-clock-433208/webapp:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:$GITHUB_SHA#' k8s/webapp-deployment.yaml
-        sed -i 's#image: gcr.io/nodal-clock-433208/api:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:$GITHUB_SHA#' k8s/api-deployment.yaml
+        sed -i 's#image: gcr.io/nodal-clock-433208/webapp:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}#' k8s/webapp-deployment.yaml
+        sed -i 's#image: gcr.io/nodal-clock-433208/api:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}#' k8s/api-deployment.yaml
 
     - name: Delete existing deployments and services (Cleanup)
       run: |
