@@ -47,31 +47,28 @@ jobs:
           --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
           --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
           --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
-          -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:$GITHUB_SHA \
+          -t gcr.io/nodal-clock-433208-b4/webapp:$GITHUB_SHA \
           -f ./webapp/Dockerfile ./webapp
 
     - name: Build Docker image for api
       run: |
         docker build \
-          -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:$GITHUB_SHA \
+          -t gcr.io/nodal-clock-433208-b4/api:$GITHUB_SHA \
           -f ./api/Dockerfile ./api
 
     - name: Push Docker image to GCR for webapp
       run: |
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:$GITHUB_SHA
+        docker push gcr.io/nodal-clock-433208-b4/webapp:$GITHUB_SHA
 
     - name: Push Docker image to GCR for api
       run: |
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:$GITHUB_SHA
+        docker push gcr.io/nodal-clock-433208-b4/api:$GITHUB_SHA
 
-    - name: Delete existing deployments and services (Cleanup)
+    - name: Clean up existing Kubernetes resources
       run: |
-        kubectl delete deployment webapp-deployment || true
-        kubectl delete deployment api-deployment || true
-        kubectl delete deployment database-deployment || true
-        kubectl delete service webapp-service || true
-        kubectl delete service api-service || true
-        kubectl delete service database-service || true
+        kubectl delete deployment webapp-deployment api-deployment database-deployment || true
+        kubectl delete service webapp-service api-service database-service || true
+        kubectl delete pod --all || true
 
     - name: Apply Kubernetes manifests
       run: |
@@ -80,27 +77,23 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v1
 
-    - name: Terraform Init and Apply (with Import)
+    - name: Terraform Init and Refresh State
       working-directory: terraform
-      env:
-        TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
-        TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-        TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-        TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
-        TF_VAR_clerk_secret_key: ${{ secrets.CLERK_SECRET_KEY }}
-        TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-        TF_VAR_database_user: ${{ secrets.DATABASE_USER }}
-        TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
-        TF_VAR_database_name: ${{ secrets.DATABASE_NAME }}
-        TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
-        TF_VAR_region: ${{ secrets.GKE_REGION }}
-        TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
       run: |
         terraform init
-        terraform import kubernetes_deployment.webapp "default/webapp-deployment" || true
-        terraform import kubernetes_deployment.api "default/api-deployment" || true
-        terraform import kubernetes_deployment.database "default/database-deployment" || true
-        terraform import kubernetes_service.webapp "default/webapp-service" || true
-        terraform import kubernetes_service.api "default/api-service" || true
-        terraform import kubernetes_service.database "default/database-service" || true
-        terraform apply -auto-approve || terraform apply -refresh-only
+        terraform refresh
+
+    - name: Terraform Import Resources
+      working-directory: terraform
+      run: |
+        terraform import kubernetes_deployment.webapp default/webapp-deployment || true
+        terraform import kubernetes_deployment.api default/api-deployment || true
+        terraform import kubernetes_deployment.database default/database-deployment || true
+        terraform import kubernetes_service.webapp default/webapp-service || true
+        terraform import kubernetes_service.api default.api-service || true
+        terraform import kubernetes_service.database default.database-service || true
+
+    - name: Terraform Apply
+      working-directory: terraform
+      run: |
+        terraform apply -auto-approve
