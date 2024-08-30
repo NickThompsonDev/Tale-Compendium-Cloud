@@ -28,42 +28,6 @@ jobs:
       run: |
         gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
 
-    - name: Set up Kubernetes Service Account
-      run: |
-        kubectl create serviceaccount terraform-deployer -n default || true
-        kubectl create clusterrolebinding terraform-deployer-binding --clusterrole=cluster-admin --serviceaccount=default:terraform-deployer || true
-
-    - name: Ensure Service Account Token Exists
-      run: |
-        kubectl apply -f - <<EOF
-        apiVersion: v1
-        kind: Secret
-        metadata:
-          name: terraform-deployer-token
-          namespace: default
-          annotations:
-            kubernetes.io/service-account.name: terraform-deployer
-        type: kubernetes.io/service-account-token
-        EOF
-
-    - name: Fetch Cluster Details
-      id: cluster_info
-      run: |
-        CLUSTER_NAME=${{ secrets.GKE_CLUSTER_NAME }}
-        REGION=${{ secrets.GKE_REGION }}
-        PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
-
-        ENDPOINT=$(gcloud container clusters describe $CLUSTER_NAME --region $REGION --project $PROJECT_ID --format='value(endpoint)')
-        HOST=https://$ENDPOINT
-
-        CA_CERT=$(gcloud container clusters describe $CLUSTER_NAME --region $REGION --project $PROJECT_ID --format='value(masterAuth.clusterCaCertificate)')
-        
-        ACCESS_TOKEN=$(gcloud auth application-default print-access-token)
-
-        echo "TF_VAR_k8s_cluster_endpoint=$HOST" >> $GITHUB_ENV
-        echo "TF_VAR_k8s_cluster_ca_certificate=$CA_CERT" >> $GITHUB_ENV
-        echo "TF_VAR_k8s_access_token=$ACCESS_TOKEN" >> $GITHUB_ENV
-
     - name: Set up Docker to use the gcloud command-line tool as a credential helper
       run: |
         gcloud auth configure-docker
@@ -119,6 +83,7 @@ jobs:
     - name: Terraform Init and Apply (with Import)
       working-directory: terraform
       env:
+        TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
         TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
         TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
         TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
@@ -127,19 +92,15 @@ jobs:
         TF_VAR_database_user: ${{ secrets.DATABASE_USER }}
         TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
         TF_VAR_database_name: ${{ secrets.DATABASE_NAME }}
-        TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
         TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
         TF_VAR_region: ${{ secrets.GKE_REGION }}
         TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
-        TF_VAR_k8s_cluster_ca_certificate: ${{ env.TF_VAR_k8s_cluster_ca_certificate }}
-        TF_VAR_k8s_cluster_endpoint: ${{ env.TF_VAR_k8s_cluster_endpoint }}
-        TF_VAR_k8s_access_token: ${{ env.TF_VAR_k8s_access_token }}
       run: |
         terraform init
         terraform import kubernetes_deployment.webapp default/webapp-deployment || true
         terraform import kubernetes_deployment.api default/api-deployment || true
         terraform import kubernetes_deployment.database default/database-deployment || true
         terraform import kubernetes_service.webapp default/webapp-service || true
-        terraform import kubernetes_service.api default/api-service || true
-        terraform import kubernetes_service.database default/database-service || true
+        terraform import kubernetes_service.api default.api-service || true
+        terraform import kubernetes_service.database default.database-service || true
         terraform apply -auto-approve

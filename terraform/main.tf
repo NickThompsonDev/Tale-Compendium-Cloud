@@ -1,19 +1,34 @@
 provider "google" {
-  credentials = var.google_credentials
+  credentials = jsondecode(base64decode(var.google_credentials))
   project     = var.project_id
   region      = var.region
 }
 
-provider "kubernetes" {
-  host                   = var.k8s_cluster_endpoint
-  token                  = var.k8s_access_token
-  cluster_ca_certificate = base64decode(var.k8s_cluster_ca_certificate)  # Decode if needed
+# Use the same service account authenticated in the GitHub Actions workflow
+data "google_client_config" "provider" {}
+
+# Retrieve the GKE cluster details
+data "google_container_cluster" "my_cluster" {
+  name     = var.cluster_name
+  location = var.region
 }
 
+# Configure the Kubernetes provider with the service account token
+provider "kubernetes" {
+  host  = "https://${data.google_container_cluster.my_cluster.endpoint}"
+  token = data.google_client_config.provider.access_token
+  cluster_ca_certificate = base64decode(
+    data.google_container_cluster.my_cluster.master_auth[0].cluster_ca_certificate,
+  )
+}
 
+# Webapp deployment
 resource "kubernetes_deployment" "webapp" {
   metadata {
     name = "webapp-deployment"
+    labels = {
+      app = "webapp"
+    }
   }
 
   spec {
@@ -35,50 +50,41 @@ resource "kubernetes_deployment" "webapp" {
       spec {
         container {
           name  = "webapp"
-          image = "gcr.io/${var.project_id}/webapp:latest"
-
+          image = "gcr.io/${var.project_id}/webapp:${var.docker_image_tag}"
+          port {
+            container_port = 3000
+          }
           env {
             name  = "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
             value = var.stripe_publishable_key
           }
-
           env {
             name  = "STRIPE_SECRET_KEY"
             value = var.stripe_secret_key
           }
-
           env {
             name  = "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
             value = var.clerk_publishable_key
           }
-
           env {
             name  = "CLERK_SECRET_KEY"
             value = var.clerk_secret_key
           }
-
           env {
             name  = "OPENAI_API_KEY"
             value = var.openai_api_key
           }
-
           env {
             name  = "DATABASE_USER"
             value = var.database_user
           }
-
           env {
             name  = "DATABASE_PASSWORD"
             value = var.database_password
           }
-
           env {
             name  = "DATABASE_NAME"
             value = var.database_name
-          }
-
-          port {
-            container_port = 3000
           }
         }
       }
@@ -130,26 +136,21 @@ resource "kubernetes_deployment" "api" {
         container {
           name  = "api"
           image = "gcr.io/${var.project_id}/api:${var.docker_image_tag}"
-
           port {
             container_port = 5000
           }
-
           env {
             name  = "DATABASE_HOST"
             value = "database"
           }
-
           env {
             name  = "DATABASE_USER"
             value = var.database_user
           }
-
           env {
             name  = "DATABASE_PASSWORD"
             value = var.database_password
           }
-
           env {
             name  = "DATABASE_NAME"
             value = var.database_name

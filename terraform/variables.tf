@@ -30,6 +30,7 @@ variable "node_machine_type" {
 variable "google_credentials" {
   description = "The contents of the GCP service account JSON file"
   type        = string
+  sensitive   = true
 }
 
 variable "docker_image_tag" {
@@ -51,6 +52,7 @@ variable "k8s_cluster_ca_certificate" {
 variable "k8s_access_token" {
   description = "The Kubernetes access token"
   type        = string
+  sensitive   = true
 }
 
 # Database variables
@@ -64,36 +66,42 @@ variable "database_user" {
   description = "The database username"
   type        = string
   default     = "user"
+  sensitive   = true
 }
 
 variable "database_password" {
   description = "The database password"
   type        = string
-  default     = "password"
+  sensitive   = true
 }
 
 # API keys and secrets
 variable "stripe_publishable_key" {
   description = "Stripe publishable key"
   type        = string
+  sensitive   = true
 }
 
 variable "stripe_secret_key" {
   description = "Stripe secret key"
   type        = string
+  sensitive   = true
 }
 
 variable "clerk_publishable_key" {
   description = "Clerk publishable key"
   type        = string
+  sensitive   = true
 }
 
 variable "clerk_secret_key" {
   description = "Clerk secret key"
   type        = string
+  sensitive   = true
 }
 
 variable "openai_api_key" {
   description = "OpenAI API key"
   type        = string
+  sensitive   = true
 }
