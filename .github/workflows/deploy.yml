@@ -36,8 +36,8 @@ jobs:
       run: |
         docker build \
           --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }} \
-          --build-arg NEXT_PUBLIC_CLERK_SIGN_IN_URL=${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }} \  # Make sure this is included
-          --build-arg NEXT_PUBLIC_CLERK_SIGN_UP_URL=${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }} \  # Make sure this is included
+          --build-arg NEXT_PUBLIC_CLERK_SIGN_IN_URL=${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }} \
+          --build-arg NEXT_PUBLIC_CLERK_SIGN_UP_URL=${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }} \
           --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
           --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }} \
           --build-arg CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} \
@@ -58,12 +58,12 @@ jobs:
           --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
           --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
           --build-arg DATABASE_HOST=database-service \
-          --build-arg DATABASE_PORT=5432 \  # Adding DATABASE_PORT
+          --build-arg DATABASE_PORT=5432 \
           --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
-          --build-arg BASE_URL=${{ secrets.BASE_URL }} \  # Adding BASE_URL
-          --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \  # Adding STRIPE_SECRET_KEY
-          --build-arg CLERK_WEBHOOK_SECRET=${{ secrets.CLERK_WEBHOOK_SECRET }} \  # Adding CLERK_WEBHOOK_SECRET
-          --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \  # Adding NEXT_PUBLIC_API_URL
+          --build-arg BASE_URL=${{ secrets.BASE_URL }} \ 
+          --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
+          --build-arg CLERK_WEBHOOK_SECRET=${{ secrets.CLERK_WEBHOOK_SECRET }} \
+          --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
           -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} \
           -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest \
           -f ./api/Dockerfile ./api
