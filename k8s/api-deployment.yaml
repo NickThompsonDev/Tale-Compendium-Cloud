@@ -25,3 +25,5 @@ spec:
           value: "${DATABASE_NAME}"
         - name: DATABASE_HOST
           value: "database-service"
+        - name: OPENAI_API_KEY
+          value: "{{OPENAI_API_KEY}}"

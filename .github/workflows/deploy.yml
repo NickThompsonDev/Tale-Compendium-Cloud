@@ -48,6 +48,7 @@ jobs:
           --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
           --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
           -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} \
+          -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest \
           -f ./webapp/Dockerfile ./webapp
 
     - name: Build Docker image for api
@@ -58,15 +59,18 @@ jobs:
           --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
           --build-arg DATABASE_HOST=database-service \
           -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} \
+          -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest \
           -f ./api/Dockerfile ./api
 
     - name: Push Docker image to GCR for webapp
       run: |
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:$GITHUB_SHA
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest
 
     - name: Push Docker image to GCR for api
       run: |
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:$GITHUB_SHA
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
 
     - name: Update Kubernetes Deployment Manifests
       run: |
