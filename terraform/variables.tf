@@ -116,12 +116,6 @@ variable "clerk_sign_up_url" {
   sensitive   = true
 }
 
-variable "base_url" {
-  description = "Base URL for API services"
-  type        = string
-  sensitive   = true
-}
-
 variable "clerk_webhook_secret" {
   description = "Clerk webhook secret"
   type        = string

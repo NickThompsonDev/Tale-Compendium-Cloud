@@ -171,10 +171,6 @@ resource "kubernetes_deployment" "api" {
             value = var.openai_api_key
           }
           env {
-            name  = "BASE_URL"
-            value = var.base_url  # Adding BASE_URL
-          }
-          env {
             name  = "STRIPE_SECRET_KEY"
             value = var.stripe_secret_key  # Adding STRIPE_SECRET_KEY
           }
