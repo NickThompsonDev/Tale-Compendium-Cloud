@@ -25,5 +25,15 @@ spec:
           value: "${DATABASE_NAME}"
         - name: DATABASE_HOST
           value: "database-service"
+        - name: DATABASE_PORT
+          value: "5432"
         - name: OPENAI_API_KEY
-          value: "{{OPENAI_API_KEY}}"
+          value: "${OPENAI_API_KEY}"
+        - name: BASE_URL
+          value: "${BASE_URL}"
+        - name: STRIPE_SECRET_KEY
+          value: "${STRIPE_SECRET_KEY}"
+        - name: CLERK_WEBHOOK_SECRET
+          value: "${CLERK_WEBHOOK_SECRET}"
+        - name: NEXT_PUBLIC_API_URL
+          value: "${NEXT_PUBLIC_API_URL}"

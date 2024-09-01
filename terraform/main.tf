@@ -82,16 +82,16 @@ resource "kubernetes_deployment" "webapp" {
             value = var.openai_api_key
           }
           env {
-            name  = "DATABASE_USER"
-            value = var.database_user
+            name  = "NEXT_PUBLIC_API_URL"
+            value = var.next_public_api_url
           }
           env {
-            name  = "DATABASE_PASSWORD"
-            value = var.database_password
+            name  = "NEXT_PUBLIC_CLERK_SIGN_IN_URL"
+            value = var.clerk_sign_in_url  # Adding NEXT_PUBLIC_CLERK_SIGN_IN_URL
           }
           env {
-            name  = "DATABASE_NAME"
-            value = var.database_name
+            name  = "NEXT_PUBLIC_CLERK_SIGN_UP_URL"
+            value = var.clerk_sign_up_url  # Adding NEXT_PUBLIC_CLERK_SIGN_UP_URL
           }
         }
       }
@@ -151,6 +151,10 @@ resource "kubernetes_deployment" "api" {
             value = "database"
           }
           env {
+            name  = "DATABASE_PORT"
+            value = "5432"  # Adding DATABASE_PORT
+          }
+          env {
             name  = "DATABASE_USER"
             value = var.database_user
           }
@@ -161,6 +165,26 @@ resource "kubernetes_deployment" "api" {
           env {
             name  = "DATABASE_NAME"
             value = var.database_name
+          }
+          env {
+            name  = "OPENAI_API_KEY"
+            value = var.openai_api_key
+          }
+          env {
+            name  = "BASE_URL"
+            value = var.base_url  # Adding BASE_URL
+          }
+          env {
+            name  = "STRIPE_SECRET_KEY"
+            value = var.stripe_secret_key  # Adding STRIPE_SECRET_KEY
+          }
+          env {
+            name  = "CLERK_WEBHOOK_SECRET"
+            value = var.clerk_webhook_secret  # Adding CLERK_WEBHOOK_SECRET
+          }
+          env {
+            name  = "NEXT_PUBLIC_API_URL"
+            value = var.next_public_api_url  # Adding NEXT_PUBLIC_API_URL
           }
         }
       }
