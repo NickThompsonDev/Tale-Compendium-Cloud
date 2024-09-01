@@ -60,7 +60,6 @@ jobs:
           --build-arg DATABASE_HOST=database-service \
           --build-arg DATABASE_PORT=5432 \
           --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
-          --build-arg BASE_URL=${{ secrets.BASE_URL }} \ 
           --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
           --build-arg CLERK_WEBHOOK_SECRET=${{ secrets.CLERK_WEBHOOK_SECRET }} \
           --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \

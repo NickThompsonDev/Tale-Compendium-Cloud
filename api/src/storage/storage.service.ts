@@ -41,8 +41,8 @@ export class StorageService {
     };
   }
 
-  async getFileUrl(id: number): Promise<string> {
-    const url = `${process.env.BASE_URL}/storage/${id}`;
-    return url;
-  }
+  // async getFileUrl(id: number): Promise<string> {
+  //   const url = `${process.env.BASE_URL}/storage/${id}`;
+  //   return url;
+  // }
 }

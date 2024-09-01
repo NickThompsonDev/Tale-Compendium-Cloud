@@ -29,8 +29,6 @@ spec:
           value: "5432"
         - name: OPENAI_API_KEY
           value: "${OPENAI_API_KEY}"
-        - name: BASE_URL
-          value: "${BASE_URL}"
         - name: STRIPE_SECRET_KEY
           value: "${STRIPE_SECRET_KEY}"
         - name: CLERK_WEBHOOK_SECRET
