@@ -1,3 +1,4 @@
+# Project and region variables
 variable "project_id" {
   description = "The project ID to deploy to"
   type        = string
@@ -96,3 +97,33 @@ variable "service_account_email" {
   default     = "github-actions-deployer@nodal-clock-433208-b4.iam.gserviceaccount.com"
 }
 
+# Additional environment variables
+variable "next_public_api_url" {
+  description = "Next.js public API URL"
+  type        = string
+  sensitive   = true
+}
+
+variable "clerk_sign_in_url" {
+  description = "Clerk sign-in URL"
+  type        = string
+  sensitive   = true
+}
+
+variable "clerk_sign_up_url" {
+  description = "Clerk sign-up URL"
+  type        = string
+  sensitive   = true
+}
+
+variable "base_url" {
+  description = "Base URL for API services"
+  type        = string
+  sensitive   = true
+}
+
+variable "clerk_webhook_secret" {
+  description = "Clerk webhook secret"
+  type        = string
+  sensitive   = true
+}
