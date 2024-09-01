@@ -67,15 +67,14 @@ jobs:
           -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest \
           -f ./api/Dockerfile ./api
 
-
     - name: Push Docker image to GCR for webapp
       run: |
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:$GITHUB_SHA
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest
 
     - name: Push Docker image to GCR for api
       run: |
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:$GITHUB_SHA
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
 
     - name: Update Kubernetes Deployment Manifests
@@ -96,6 +95,22 @@ jobs:
       run: |
         kubectl apply -f k8s/
 
+    - name: Cleanup old Docker images in GCR
+      run: |
+        # Get the current SHA
+        SHA="${{ github.sha }}"
+        PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+
+        # List all tags in the webapp image and delete those that aren't 'latest' or the current SHA
+        gcloud container images list-tags gcr.io/${PROJECT_ID}/webapp --format='get(digest)' --filter='NOT tags:(${SHA},latest)' | while read digest; do
+          gcloud container images delete gcr.io/${PROJECT_ID}/webapp@$digest --quiet --force-delete-tags
+        done
+
+        # Repeat the process for the API image
+        gcloud container images list-tags gcr.io/${PROJECT_ID}/api --format='get(digest)' --filter='NOT tags:(${SHA},latest)' | while read digest; do
+          gcloud container images delete gcr.io/${PROJECT_ID}/api@$digest --quiet --force-delete-tags
+        done
+
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v1
 
@@ -114,6 +129,10 @@ jobs:
         TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
         TF_VAR_region: ${{ secrets.GKE_REGION }}
         TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
+        TF_VAR_next_public_api_url: ${{ secrets.NEXT_PUBLIC_API_URL }}
+        TF_VAR_clerk_sign_in_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
+        TF_VAR_clerk_sign_up_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
+        TF_VAR_clerk_webhook_secret: ${{ secrets.CLERK_WEBHOOK_SECRET }}
       run: |
         terraform init
         terraform import kubernetes_deployment.webapp "default/webapp-deployment" || true
