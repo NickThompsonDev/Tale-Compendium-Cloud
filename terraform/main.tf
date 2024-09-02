@@ -172,15 +172,15 @@ resource "kubernetes_deployment" "api" {
           }
           env {
             name  = "STRIPE_SECRET_KEY"
-            value = var.stripe_secret_key  # Adding STRIPE_SECRET_KEY
+            value = var.stripe_secret_key
           }
           env {
             name  = "CLERK_WEBHOOK_SECRET"
-            value = var.clerk_webhook_secret  # Adding CLERK_WEBHOOK_SECRET
+            value = var.clerk_webhook_secret
           }
           env {
             name  = "NEXT_PUBLIC_API_URL"
-            value = var.next_public_api_url  # Adding NEXT_PUBLIC_API_URL
+            value = var.next_public_api_url
           }
         }
       }
