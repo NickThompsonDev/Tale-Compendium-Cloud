@@ -5,8 +5,8 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'http',
-        hostname: process.env.NEXT_PUBLIC_API_URL.split('//')[1],  // Extract hostname from API URL
-        port: '5000',
+        hostname: process.env.NEXT_PUBLIC_STORAGE_API_URL?.split('//')[1],
+        port: '',
         pathname: '/storage/**',
       },
     ],

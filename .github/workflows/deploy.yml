@@ -34,6 +34,22 @@ jobs:
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
 
+      - name: Cleanup old Docker images in GCR
+        run: |
+          # Get the current SHA
+          SHA="${{ github.sha }}"
+          PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+
+          # List all tags in the webapp image and delete those that aren't 'latest' or the current SHA
+          gcloud container images list-tags gcr.io/${PROJECT_ID}/webapp --format='get(digest)' --filter='NOT tags:(${SHA},latest)' | while read digest; do
+            gcloud container images delete gcr.io/${PROJECT_ID}/webapp@$digest --quiet --force-delete-tags
+          done
+
+          # Repeat the process for the API image
+          gcloud container images list-tags gcr.io/${PROJECT_ID}/api --format='get(digest)' --filter='NOT tags:(${SHA},latest)' | while read digest; do
+            gcloud container images delete gcr.io/${PROJECT_ID}/api@$digest --quiet --force-delete-tags
+          done
+
       - name: Terraform Init and Apply (Initial Deployment)
         working-directory: terraform
         env:
