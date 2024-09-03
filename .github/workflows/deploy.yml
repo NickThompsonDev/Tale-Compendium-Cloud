@@ -80,16 +80,23 @@ jobs:
     - name: Apply Kubernetes manifests
       run: |
         kubectl apply -f k8s/
-
-    - name: Apply Ingress for Storage
+    
+    - name: Wait for Webapp Service to be Ready
       run: |
-        kubectl apply -f k8s/storage-ingress.yaml
-
+        for i in {1..10}; do
+          kubectl get svc webapp-service && break || sleep 10
+        done
+    
     - name: Get Ingress IP for API
       run: |
-        INGRESS_IP=$(kubectl get ingress api-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        INGRESS_IP=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        sed -i "s/{{DOMAIN_PLACEHOLDER}}/$INGRESS_IP/" k8s/storage-ingress.yaml
         echo "NEXT_PUBLIC_API_URL=http://$INGRESS_IP" >> $GITHUB_ENV
         echo "NEXT_PUBLIC_API_URL=$INGRESS_IP"
+    
+    - name: Apply updated storage Ingress
+      run: |
+        kubectl apply -f k8s/storage-ingress.yaml
 
     - name: Get Webapp URL
       run: |
