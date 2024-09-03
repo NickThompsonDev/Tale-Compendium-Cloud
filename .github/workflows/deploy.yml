@@ -6,164 +6,93 @@ on:
       - main
 
 jobs:
-  deploy:
+  deploy-initial:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Authenticate to Google Cloud
-      uses: google-github-actions/auth@v1
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Set up Cloud SDK
-      uses: google-github-actions/setup-gcloud@v1
-      with:
-        project_id: ${{ secrets.GCP_PROJECT_ID }}
-        install_components: kubectl
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          install_components: kubectl
 
-    - name: Configure kubectl to use the GKE cluster
-      run: |
-        gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
+      - name: Configure kubectl to use the GKE cluster
+        run: |
+          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
 
-    - name: Set up Docker to use the gcloud command-line tool as a credential helper
-      run: |
-        gcloud auth configure-docker
+      - name: Build and Push Docker Images
+        run: |
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} -f ./webapp/Dockerfile ./webapp
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} -f ./api/Dockerfile ./api
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
 
-    - name: Build Docker image for webapp
-      run: |
-        docker build \
-          --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }} \
-          --build-arg NEXT_PUBLIC_CLERK_SIGN_IN_URL=${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }} \
-          --build-arg NEXT_PUBLIC_CLERK_SIGN_UP_URL=${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }} \
-          --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
-          --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }} \
-          --build-arg CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} \
-          --build-arg CLERK_WEBHOOK_SECRET=${{ secrets.CLERK_WEBHOOK_SECRET }} \
-          --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
-          --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
-          --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
-          --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
-          --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
-          --build-arg NEXT_PUBLIC_STORAGE_API_URL="http://placeholder-for-storage-url" \
-          -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} \
-          -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest \
-          -f ./webapp/Dockerfile ./webapp
+      - name: Terraform Init and Apply (Initial Deployment)
+        working-directory: terraform
+        env:
+          TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
+          TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+          TF_VAR_clerk_secret_key: ${{ secrets.CLERK_SECRET_KEY }}
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          TF_VAR_database_user: ${{ secrets.DATABASE_USER }}
+          TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
+          TF_VAR_database_name: ${{ secrets.DATABASE_NAME }}
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_region: ${{ secrets.GKE_REGION }}
+          TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
+          TF_VAR_next_public_api_url: "http://placeholder-for-api-url"
+          TF_VAR_storage_api_url: "http://placeholder-for-storage-url"
+          TF_VAR_webapp_url: "http://placeholder-for-webapp-url"
+          TF_VAR_database_host: "placeholder-for-database-host"
+        run: |
+          terraform init
+          terraform apply -auto-approve
 
-    - name: Build Docker image for API
-      run: |
-        docker build \
-          --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
-          --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
-          --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
-          --build-arg DATABASE_HOST=database-service \
-          --build-arg DATABASE_PORT=5432 \
-          --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
-          --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
-          --build-arg CLERK_WEBHOOK_SECRET=${{ secrets.CLERK_WEBHOOK_SECRET }} \
-          --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
-          --build-arg NEXT_PUBLIC_STORAGE_API_URL="http://placeholder-for-storage-url" \
-          -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} \
-          -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest \
-          -f ./api/Dockerfile ./api
+  update-urls:
+    runs-on: ubuntu-latest
+    needs: deploy-initial
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Push Docker image to GCR for webapp
-      run: |
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest
+      - name: Retrieve IPs and Update Terraform
+        run: |
+          INGRESS_IP=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          API_IP=$(kubectl get svc api-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          DATABASE_IP=$(kubectl get svc database-service -o jsonpath='{.spec.clusterIP}')
+          echo "INGRESS_IP=http://$INGRESS_IP" >> $GITHUB_ENV
+          echo "API_IP=http://$API_IP" >> $GITHUB_ENV
+          echo "DATABASE_IP=$DATABASE_IP" >> $GITHUB_ENV
 
-    - name: Push Docker image to GCR for API
-      run: |
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
-
-    - name: Apply Kubernetes manifests without Ingress
-      run: |
-        kubectl apply -f k8s/ --selector='!ingress'
-
-    - name: Wait for Webapp Service to be Ready
-      run: |
-        for i in {1..10}; do
-          kubectl get svc webapp-service && break || sleep 10
-        done
-
-    - name: Get Ingress IP for API
-      run: |
-        INGRESS_IP=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-        sed -i "s/{{DOMAIN_PLACEHOLDER}}/$INGRESS_IP/" k8s/storage-ingress.yaml
-        echo "NEXT_PUBLIC_API_URL=http://$INGRESS_IP" >> $GITHUB_ENV
-        echo "NEXT_PUBLIC_API_URL=$INGRESS_IP"
-    
-    - name: Apply updated storage Ingress
-      run: |
-        kubectl apply -f k8s/storage-ingress.yaml
-
-    - name: Get Webapp URL
-      run: |
-        WEBAPP_IP=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-        echo "WEBAPP_URL=http://$WEBAPP_IP" >> $GITHUB_ENV
-        echo "WEBAPP_URL=$WEBAPP_IP"
-
-    - name: Get Database Host
-      run: |
-        DATABASE_HOST=$(kubectl get svc database-service -o jsonpath='{.spec.clusterIP}')
-        echo "DATABASE_HOST=$DATABASE_HOST" >> $GITHUB_ENV
-        echo "DATABASE_HOST=$DATABASE_HOST"
-
-    - name: Update Kubernetes Deployment Manifests with new URLs
-      run: |
-        sed -i 's#value: "${NEXT_PUBLIC_API_URL}"#value: "$NEXT_PUBLIC_API_URL"#' k8s/webapp-deployment.yaml
-        sed -i 's#value: "${NEXT_PUBLIC_API_URL}"#value: "$NEXT_PUBLIC_API_URL"#' k8s/api-deployment.yaml
-
-    - name: Apply Kubernetes manifests again with updated environment variables
-      run: |
-        kubectl apply -f k8s/
-
-    - name: Cleanup old Docker images in GCR
-      run: |
-        # Get the current SHA
-        SHA="${{ github.sha }}"
-        PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
-
-        # List all tags in the webapp image and delete those that aren't 'latest' or the current SHA
-        gcloud container images list-tags gcr.io/${PROJECT_ID}/webapp --format='get(digest)' --filter='NOT tags:(${SHA},latest)' | while read digest; do
-          gcloud container images delete gcr.io/${PROJECT_ID}/webapp@$digest --quiet --force-delete-tags
-        done
-
-        # Repeat the process for the API image
-        gcloud container images list-tags gcr.io/${PROJECT_ID}/api --format='get(digest)' --filter='NOT tags:(${SHA},latest)' | while read digest; do
-          gcloud container images delete gcr.io/${PROJECT_ID}/api@$digest --quiet --force-delete-tags
-        done
-
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v1
-
-    - name: Terraform Init and Apply (with Import)
-      working-directory: terraform
-      env:
-        TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
-        TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-        TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-        TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
-        TF_VAR_clerk_secret_key: ${{ secrets.CLERK_SECRET_KEY }}
-        TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-        TF_VAR_database_user: ${{ secrets.DATABASE_USER }}
-        TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
-        TF_VAR_database_name: ${{ secrets.DATABASE_NAME }}
-        TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
-        TF_VAR_region: ${{ secrets.GKE_REGION }}
-        TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
-        TF_VAR_next_public_api_url: ${{ env.NEXT_PUBLIC_API_URL }}
-        TF_VAR_webapp_url: ${{ env.WEBAPP_URL }}
-        TF_VAR_database_host: ${{ env.DATABASE_HOST }}
-      run: |
-        terraform init
-        terraform import kubernetes_deployment.webapp "default/webapp-deployment" || true
-        terraform import kubernetes_deployment.api "default/api-deployment" || true
-        terraform import kubernetes_deployment.database "default/database-deployment" || true
-        terraform import kubernetes_service.webapp "default/webapp-service" || true
-        terraform import kubernetes_service.api "default/api-service" || true
-        terraform import kubernetes_service.database "default/database-service" || true
-        terraform apply -auto-approve || terraform apply -refresh-only
+      - name: Terraform Apply with Updated URLs
+        working-directory: terraform
+        env:
+          TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
+          TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+          TF_VAR_clerk_secret_key: ${{ secrets.CLERK_SECRET_KEY }}
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          TF_VAR_database_user: ${{ secrets.DATABASE_USER }}
+          TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
+          TF_VAR_database_name: ${{ secrets.DATABASE_NAME }}
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_region: ${{ secrets.GKE_REGION }}
+          TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
+          TF_VAR_next_public_api_url: ${{ env.API_IP }}
+          TF_VAR_storage_api_url: ${{ env.INGRESS_IP }}
+          TF_VAR_webapp_url: ${{ env.WEBAPP_IP }}
+          TF_VAR_database_host: ${{ env.DATABASE_IP }}
+        run: |
+          terraform apply -auto-approve
