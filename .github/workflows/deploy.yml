@@ -51,7 +51,7 @@ jobs:
           -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest \
           -f ./webapp/Dockerfile ./webapp
 
-    - name: Build Docker image for api
+    - name: Build Docker image for API
       run: |
         docker build \
           --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
@@ -72,49 +72,45 @@ jobs:
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest
 
-    - name: Push Docker image to GCR for api
+    - name: Push Docker image to GCR for API
       run: |
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
-
-    - name: Update Kubernetes Deployment Manifests
-      run: |
-        sed -i 's#image: gcr.io/nodal-clock-433208/webapp:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}#' k8s/webapp-deployment.yaml
-        sed -i 's#image: gcr.io/nodal-clock-433208/api:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}#' k8s/api-deployment.yaml
 
     - name: Apply Kubernetes manifests
       run: |
         kubectl apply -f k8s/
 
-    - name: Wait for Services to be Created
+    - name: Apply Ingress for Storage
       run: |
-        for i in {1..10}; do
-          kubectl get svc webapp-service && break || sleep 10
-        done
-        for i in {1..10}; do
-          kubectl get svc api-service && break || sleep 10
-        done
-        for i in {1..10}; do
-          kubectl get svc database-service && break || sleep 10
-        done
+        kubectl apply -f k8s/storage-ingress.yaml
+
+    - name: Get Ingress IP for API
+      run: |
+        INGRESS_IP=$(kubectl get ingress api-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        echo "NEXT_PUBLIC_API_URL=http://$INGRESS_IP" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_API_URL=$INGRESS_IP"
 
     - name: Get Webapp URL
       run: |
-        export WEBAPP_URL=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-        echo "Webapp URL: $WEBAPP_URL"
-        echo "WEBAPP_URL=$WEBAPP_URL" >> $GITHUB_ENV
-
-    - name: Get API URL
-      run: |
-        export NEXT_PUBLIC_API_URL=$(kubectl get svc api-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-        echo "API URL: $NEXT_PUBLIC_API_URL"
-        echo "NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL" >> $GITHUB_ENV
+        WEBAPP_IP=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        echo "WEBAPP_URL=http://$WEBAPP_IP" >> $GITHUB_ENV
+        echo "WEBAPP_URL=$WEBAPP_IP"
 
     - name: Get Database Host
       run: |
-        export DATABASE_HOST=$(kubectl get svc database-service -o jsonpath='{.spec.clusterIP}')
-        echo "Database Host: $DATABASE_HOST"
+        DATABASE_HOST=$(kubectl get svc database-service -o jsonpath='{.spec.clusterIP}')
         echo "DATABASE_HOST=$DATABASE_HOST" >> $GITHUB_ENV
+        echo "DATABASE_HOST=$DATABASE_HOST"
+
+    - name: Update Kubernetes Deployment Manifests with new URLs
+      run: |
+        sed -i 's#value: "${NEXT_PUBLIC_API_URL}"#value: "$NEXT_PUBLIC_API_URL"#' k8s/webapp-deployment.yaml
+        sed -i 's#value: "${NEXT_PUBLIC_API_URL}"#value: "$NEXT_PUBLIC_API_URL"#' k8s/api-deployment.yaml
+
+    - name: Apply Kubernetes manifests again with updated environment variables
+      run: |
+        kubectl apply -f k8s/
 
     - name: Cleanup old Docker images in GCR
       run: |

@@ -279,3 +279,34 @@ resource "kubernetes_service" "database" {
     type = "ClusterIP"
   }
 }
+
+# Ingress Namespace
+resource "kubernetes_namespace" "ingress" {
+  metadata {
+    name = "ingress-nginx"
+  }
+}
+
+# Service Account for Ingress Controller
+resource "kubernetes_service_account" "nginx" {
+  metadata {
+    name      = "nginx-ingress-serviceaccount"
+    namespace = kubernetes_namespace.ingress.metadata[0].name
+  }
+}
+
+# NGINX Ingress Controller (using Helm)
+resource "helm_release" "nginx" {
+  name       = "nginx-ingress"
+  repository = "https://kubernetes.github.io/ingress-nginx"
+  chart      = "ingress-nginx"
+  namespace  = kubernetes_namespace.ingress.metadata[0].name
+
+  values = [
+    <<-EOF
+      controller:
+        service:
+          type: LoadBalancer
+    EOF
+  ]
+}

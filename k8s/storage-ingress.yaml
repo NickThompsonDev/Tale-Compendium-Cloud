@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: storage-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+  - host: "your-domain.com"  # Replace with your domain or LoadBalancer IP
+    http:
+      paths:
+      - path: /storage
+        pathType: Prefix
+        backend:
+          service:
+            name: api-service  # Name of your API service
+            port:
+              number: 5000     # Port your API is exposed on
