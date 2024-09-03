@@ -29,7 +29,7 @@ provider "kubernetes" {
   )
 }
 
-# Example Kubernetes deployment for webapp
+#Kubernetes deployment for webapp
 resource "kubernetes_deployment" "webapp" {
   metadata {
     name = "webapp-deployment"
@@ -86,12 +86,16 @@ resource "kubernetes_deployment" "webapp" {
             value = var.next_public_api_url
           }
           env {
+            name  = "WEBAPP_URL"
+            value = var.webapp_url
+          }
+          env {
             name  = "NEXT_PUBLIC_CLERK_SIGN_IN_URL"
-            value = var.clerk_sign_in_url  # Adding NEXT_PUBLIC_CLERK_SIGN_IN_URL
+            value = var.clerk_sign_in_url
           }
           env {
             name  = "NEXT_PUBLIC_CLERK_SIGN_UP_URL"
-            value = var.clerk_sign_up_url  # Adding NEXT_PUBLIC_CLERK_SIGN_UP_URL
+            value = var.clerk_sign_up_url
           }
         }
       }
@@ -148,11 +152,11 @@ resource "kubernetes_deployment" "api" {
           }
           env {
             name  = "DATABASE_HOST"
-            value = "database"
+            value = var.database_host
           }
           env {
             name  = "DATABASE_PORT"
-            value = "5432"  # Adding DATABASE_PORT
+            value = "5432"
           }
           env {
             name  = "DATABASE_USER"
