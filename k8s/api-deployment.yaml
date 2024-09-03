@@ -16,6 +16,13 @@ spec:
         image: gcr.io/nodal-clock-433208/api:latest
         ports:
         - containerPort: 5000
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
         env:
         - name: DATABASE_USER
           value: "${DATABASE_USER}"
@@ -24,7 +31,7 @@ spec:
         - name: DATABASE_NAME
           value: "${DATABASE_NAME}"
         - name: DATABASE_HOST
-          value: "{{DATABASE_HOST}}"
+          value: "${DATABASE_HOST}"
         - name: DATABASE_PORT
           value: "5432"
         - name: OPENAI_API_KEY

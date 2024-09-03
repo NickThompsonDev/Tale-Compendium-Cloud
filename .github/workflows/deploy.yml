@@ -77,6 +77,27 @@ jobs:
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
 
+    - name: Update Kubernetes Deployment Manifests
+      run: |
+        sed -i 's#image: gcr.io/nodal-clock-433208/webapp:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}#' k8s/webapp-deployment.yaml
+        sed -i 's#image: gcr.io/nodal-clock-433208/api:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}#' k8s/api-deployment.yaml
+
+    - name: Apply Kubernetes manifests
+      run: |
+        kubectl apply -f k8s/
+
+    - name: Wait for Services to be Created
+      run: |
+        for i in {1..10}; do
+          kubectl get svc webapp-service && break || sleep 10
+        done
+        for i in {1..10}; do
+          kubectl get svc api-service && break || sleep 10
+        done
+        for i in {1..10}; do
+          kubectl get svc database-service && break || sleep 10
+        done
+
     - name: Get Webapp URL
       run: |
         export WEBAPP_URL=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
@@ -94,24 +115,6 @@ jobs:
         export DATABASE_HOST=$(kubectl get svc database-service -o jsonpath='{.spec.clusterIP}')
         echo "Database Host: $DATABASE_HOST"
         echo "DATABASE_HOST=$DATABASE_HOST" >> $GITHUB_ENV
-
-    - name: Update Kubernetes Deployment Manifests
-      run: |
-        sed -i 's#image: gcr.io/nodal-clock-433208/webapp:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}#' k8s/webapp-deployment.yaml
-        sed -i 's#image: gcr.io/nodal-clock-433208/api:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}#' k8s/api-deployment.yaml
-
-    - name: Delete existing deployments and services (Cleanup)
-      run: |
-        kubectl delete deployment webapp-deployment || true
-        kubectl delete deployment api-deployment || true
-        kubectl delete deployment database-deployment || true
-        kubectl delete service webapp-service || true
-        kubectl delete service api-service || true
-        kubectl delete service database-service || true
-
-    - name: Apply Kubernetes manifests
-      run: |
-        kubectl apply -f k8s/
 
     - name: Cleanup old Docker images in GCR
       run: |

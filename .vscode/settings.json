@@ -1,0 +1,5 @@
+{
+    "yaml.schemas": {
+        "https://json.schemastore.org/github-action.json": "file:///c%3A/Users/nickb/Documents/Code/Tale%20Compendium%20Cloud/.github/workflows/deploy.yml"
+    }
+}

@@ -97,7 +97,6 @@ variable "service_account_email" {
   default     = "github-actions-deployer@nodal-clock-433208-b4.iam.gserviceaccount.com"
 }
 
-# Additional environment variables
 variable "next_public_api_url" {
   description = "Next.js public API URL"
   type        = string
@@ -122,11 +121,6 @@ variable "clerk_webhook_secret" {
   sensitive   = true
 }
 
-variable "next_public_api_url" {
-  description = "Next.js public API URL"
-  type        = string
-  sensitive   = true
-}
 
 variable "webapp_url" {
   description = "Webapp URL for CORS settings"
