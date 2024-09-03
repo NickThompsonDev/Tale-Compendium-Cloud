@@ -77,6 +77,24 @@ jobs:
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
 
+    - name: Get Webapp URL
+      run: |
+        export WEBAPP_URL=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        echo "Webapp URL: $WEBAPP_URL"
+        echo "WEBAPP_URL=$WEBAPP_URL" >> $GITHUB_ENV
+
+    - name: Get API URL
+      run: |
+        export NEXT_PUBLIC_API_URL=$(kubectl get svc api-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        echo "API URL: $NEXT_PUBLIC_API_URL"
+        echo "NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL" >> $GITHUB_ENV
+
+    - name: Get Database Host
+      run: |
+        export DATABASE_HOST=$(kubectl get svc database-service -o jsonpath='{.spec.clusterIP}')
+        echo "Database Host: $DATABASE_HOST"
+        echo "DATABASE_HOST=$DATABASE_HOST" >> $GITHUB_ENV
+
     - name: Update Kubernetes Deployment Manifests
       run: |
         sed -i 's#image: gcr.io/nodal-clock-433208/webapp:latest#image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}#' k8s/webapp-deployment.yaml
@@ -129,10 +147,9 @@ jobs:
         TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
         TF_VAR_region: ${{ secrets.GKE_REGION }}
         TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
-        TF_VAR_next_public_api_url: ${{ secrets.NEXT_PUBLIC_API_URL }}
-        TF_VAR_clerk_sign_in_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
-        TF_VAR_clerk_sign_up_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
-        TF_VAR_clerk_webhook_secret: ${{ secrets.CLERK_WEBHOOK_SECRET }}
+        TF_VAR_next_public_api_url: ${{ env.NEXT_PUBLIC_API_URL }}
+        TF_VAR_webapp_url: ${{ env.WEBAPP_URL }}
+        TF_VAR_database_host: ${{ env.DATABASE_HOST }}
       run: |
         terraform init
         terraform import kubernetes_deployment.webapp "default/webapp-deployment" || true

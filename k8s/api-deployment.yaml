@@ -24,7 +24,7 @@ spec:
         - name: DATABASE_NAME
           value: "${DATABASE_NAME}"
         - name: DATABASE_HOST
-          value: "database-service"
+          value: "{{DATABASE_HOST}}"
         - name: DATABASE_PORT
           value: "5432"
         - name: OPENAI_API_KEY

@@ -12,9 +12,9 @@ async function bootstrap() {
 
   // Enable CORS
   app.enableCors({
-    origin: 'http://localhost:3000',
+    origin: process.env.NEXT_PUBLIC_WEBAPP_URL,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    credentials: true, // Include credentials like cookies in requests
+    credentials: true,
   });
 
   // API SPEC - https://docs.nestjs.com/openapi/introduction

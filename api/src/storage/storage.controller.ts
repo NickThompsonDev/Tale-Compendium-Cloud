@@ -46,7 +46,7 @@ export class StorageController {
     );
 
     // Log the URL where the file can be accessed
-    const fileUrl = `http://localhost:5000/storage/${savedFile.id}`;
+    const fileUrl = `${process.env.NEXT_PUBLIC_API_URL}/storage/${savedFile.id}`;
     this.logger.log(`File uploaded with URL: ${fileUrl}`);
 
     return savedFile;
@@ -72,8 +72,11 @@ export class StorageController {
     }
     this.logger.log(`File with ID: ${id} retrieved successfully`);
 
+    // Use the WEBAPP_URL environment variable
+    const allowedOrigin = process.env.WEBAPP_URL || 'http://localhost:3000';
+
     // Set the CORS headers for cross-origin requests
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
 
     // Set the Content-Type and Content-Disposition headers

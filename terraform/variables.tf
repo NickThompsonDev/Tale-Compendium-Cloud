@@ -121,3 +121,21 @@ variable "clerk_webhook_secret" {
   type        = string
   sensitive   = true
 }
+
+variable "next_public_api_url" {
+  description = "Next.js public API URL"
+  type        = string
+  sensitive   = true
+}
+
+variable "webapp_url" {
+  description = "Webapp URL for CORS settings"
+  type        = string
+  sensitive   = true
+}
+
+variable "database_host" {
+  description = "Database host URL"
+  type        = string
+  sensitive   = true
+}
