@@ -97,6 +97,10 @@ resource "kubernetes_deployment" "webapp" {
             name  = "NEXT_PUBLIC_CLERK_SIGN_UP_URL"
             value = var.clerk_sign_up_url
           }
+          env { 
+            name  = "NEXT_PUBLIC_STORAGE_API_URL" 
+            value = var.storage_api_url
+          }
         }
       }
     }
@@ -185,6 +189,10 @@ resource "kubernetes_deployment" "api" {
           env {
             name  = "NEXT_PUBLIC_API_URL"
             value = var.next_public_api_url
+          }
+          env { 
+            name  = "NEXT_PUBLIC_STORAGE_API_URL" 
+            value = var.storage_api_url
           }
         }
       }

@@ -47,6 +47,7 @@ jobs:
           --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
           --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
           --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
+          --build-arg NEXT_PUBLIC_STORAGE_API_URL="http://placeholder-for-storage-url" \
           -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} \
           -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest \
           -f ./webapp/Dockerfile ./webapp
@@ -63,6 +64,7 @@ jobs:
           --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
           --build-arg CLERK_WEBHOOK_SECRET=${{ secrets.CLERK_WEBHOOK_SECRET }} \
           --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
+          --build-arg NEXT_PUBLIC_STORAGE_API_URL="http://placeholder-for-storage-url" \
           -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} \
           -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest \
           -f ./api/Dockerfile ./api
@@ -77,16 +79,16 @@ jobs:
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
 
-    - name: Apply Kubernetes manifests
+    - name: Apply Kubernetes manifests without Ingress
       run: |
-        kubectl apply -f k8s/
-    
+        kubectl apply -f k8s/ --selector='!ingress'
+
     - name: Wait for Webapp Service to be Ready
       run: |
         for i in {1..10}; do
           kubectl get svc webapp-service && break || sleep 10
         done
-    
+
     - name: Get Ingress IP for API
       run: |
         INGRESS_IP=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')

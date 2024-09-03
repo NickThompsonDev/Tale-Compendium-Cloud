@@ -133,3 +133,9 @@ variable "database_host" {
   type        = string
   sensitive   = true
 }
+
+variable "storage_api_url" {
+  description = "API URL used for storage access (points to the ingress IP)"
+  type        = string
+  sensitive   = true
+}
