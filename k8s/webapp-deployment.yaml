@@ -16,13 +16,13 @@ spec:
         image: gcr.io/nodal-clock-433208/webapp:latest
         ports:
         - containerPort: 3000
-          resources:
-        limits:
-          memory: "512Mi"
-          cpu: "500m"
-        requests:
-          memory: "256Mi"
-          cpu: "250m"
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
         env:
         - name: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
           value: "${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}"
