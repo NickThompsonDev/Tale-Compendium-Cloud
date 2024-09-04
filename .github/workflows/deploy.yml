@@ -40,6 +40,7 @@ jobs:
           kubectl delete service api-service --ignore-not-found
           kubectl delete service database-service --ignore-not-found
           kubectl delete service ingress-nginx --ignore-not-found
+          kubectl delete namespace ingress-nginx --ignore-not-found
 
       - name: Build and Push Docker Images
         run: |
