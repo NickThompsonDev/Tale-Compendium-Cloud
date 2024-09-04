@@ -107,7 +107,7 @@ jobs:
           TF_VAR_next_public_api_url: "http://placeholder-for-api-url"
           TF_VAR_storage_api_url: "http://placeholder-for-storage-url"
           TF_VAR_webapp_url: "http://placeholder-for-webapp-url"
-          TF_VAR_database_host: "placeholder-for-database-host"
+          TF_VAR_database_host: "database-service.default.svc.cluster.local"
           TF_VAR_clerk_sign_in_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
           TF_VAR_clerk_sign_up_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
           TF_VAR_clerk_webhook_secret: ${{ secrets.CLERK_WEBHOOK_SECRET }}
