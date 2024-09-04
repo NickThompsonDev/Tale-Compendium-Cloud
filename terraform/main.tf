@@ -156,7 +156,7 @@ resource "kubernetes_deployment" "api" {
           }
           env {
             name  = "DATABASE_HOST"
-            value = var.database_host
+            value = "database-service.default.svc.cluster.local"
           }
           env {
             name  = "DATABASE_PORT"
