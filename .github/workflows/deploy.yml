@@ -31,6 +31,15 @@ jobs:
         run: |
           gcloud auth configure-docker
 
+      - name: Cleanup existing Kubernetes resources
+        run: |
+          kubectl delete deployment webapp-deployment --ignore-not-found
+          kubectl delete deployment api-deployment --ignore-not-found
+          kubectl delete deployment database-deployment --ignore-not-found
+          kubectl delete service webapp-service --ignore-not-found
+          kubectl delete service api-service --ignore-not-found
+          kubectl delete service database-service --ignore-not-found
+
       - name: Build and Push Docker Images
         run: |
           docker build \
@@ -77,6 +86,7 @@ jobs:
           gcloud container images list-tags gcr.io/${PROJECT_ID}/api --format='get(digest)' --filter='NOT tags:(${SHA},latest)' | while read digest; do
             gcloud container images delete gcr.io/${PROJECT_ID}/api@$digest --quiet --force-delete-tags
           done
+
 
       - name: Terraform Init and Apply (Initial Deployment)
         working-directory: terraform
