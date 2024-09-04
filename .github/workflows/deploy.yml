@@ -29,8 +29,32 @@ jobs:
 
       - name: Build and Push Docker Images
         run: |
-          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} -f ./webapp/Dockerfile ./webapp
-          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} -f ./api/Dockerfile ./api
+          docker build \
+            --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }} \
+            --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
+            --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }} \
+            --build-arg CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} \
+            --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+            --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
+            --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
+            --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
+            --build-arg NEXT_PUBLIC_API_URL="http://placeholder-for-api-url" \
+            --build-arg STORAGE_API_URL="http://placeholder-for-storage-url" \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} -f ./webapp/Dockerfile ./webapp
+
+          docker build \
+            --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }} \
+            --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
+            --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }} \
+            --build-arg CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} \
+            --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+            --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
+            --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
+            --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
+            --build-arg NEXT_PUBLIC_API_URL="http://placeholder-for-api-url" \
+            --build-arg STORAGE_API_URL="http://placeholder-for-storage-url" \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} -f ./api/Dockerfile ./api
+    
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
 
