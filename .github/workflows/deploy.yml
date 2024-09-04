@@ -7,6 +7,7 @@ on:
 
 jobs:
   deploy-initial:
+    if: ${{ !contains(github.event.head_commit.message, 'skip-deploy') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -125,6 +126,16 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          install_components: kubectl
+
+      - name: Configure kubectl to use the GKE cluster
+        run: |
+          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
+
       - name: Retrieve IPs and Update Terraform
         run: |
           INGRESS_IP=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
@@ -138,7 +149,6 @@ jobs:
         working-directory: terraform
         env:
           TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
-          KUBECONFIG: ~/.kube/config  # Ensure Helm has access to kubeconfig
           TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
           TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
