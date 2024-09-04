@@ -138,6 +138,7 @@ jobs:
         working-directory: terraform
         env:
           TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
+          KUBECONFIG: ~/.kube/config  # Ensure Helm has access to kubeconfig
           TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
           TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}

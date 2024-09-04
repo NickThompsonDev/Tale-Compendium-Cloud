@@ -29,6 +29,12 @@ provider "kubernetes" {
   )
 }
 
+provider "helm" {
+  kubernetes {
+    config_path = "~/.kube/config"
+  }
+}
+
 #Kubernetes deployment for webapp
 resource "kubernetes_deployment" "webapp" {
   metadata {
