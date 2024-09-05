@@ -15,13 +15,16 @@ data "google_service_account_access_token" "my_kubernetes_sa" {
 }
 
 # Retrieve the GKE cluster details
-resource "google_container_cluster" "primary" {
+data "google_container_cluster" "primary" {
   name     = var.cluster_name
   location = var.region
-  node_config {
-    machine_type = var.node_machine_type
-  }
-  initial_node_count = var.node_count
+}
+
+# Kubernetes provider using GKE cluster
+provider "kubernetes" {
+  host                   = "https://${data.google_container_cluster.primary.endpoint}"
+  token                  = data.google_service_account_access_token.my_kubernetes_sa.access_token
+  cluster_ca_certificate = base64decode(data.google_container_cluster.primary.master_auth[0].cluster_ca_certificate)
 }
 
 # Create a namespace for the ingress controller
@@ -54,4 +57,3 @@ resource "helm_release" "nginx" {
     EOF
   ]
 }
-
