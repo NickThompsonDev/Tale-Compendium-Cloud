@@ -61,7 +61,7 @@ jobs:
               kubernetes.io/ingress.class: "nginx"
           spec:
             rules:
-              http:
+            - http:
                 paths:
                 - path: /api
                   pathType: Prefix
@@ -71,6 +71,7 @@ jobs:
                       port:
                         number: 5000
           EOF
+
 
       # Step 9: Build and Push Docker Images
       - name: Build and Push Docker Images
