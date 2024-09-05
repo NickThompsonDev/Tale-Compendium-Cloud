@@ -27,12 +27,16 @@ provider "kubernetes" {
   cluster_ca_certificate = base64decode(data.google_container_cluster.primary.master_auth[0].cluster_ca_certificate)
 }
 
-# Create a namespace for the ingress controller
 resource "kubernetes_namespace" "ingress" {
   metadata {
     name = "ingress-nginx"
   }
+
+  lifecycle {
+    ignore_changes = all  # Ignore changes to this resource to prevent errors if it already exists
+  }
 }
+
 
 # Create a service account for the ingress controller
 resource "kubernetes_service_account" "nginx" {
@@ -56,4 +60,15 @@ resource "helm_release" "nginx" {
           type: LoadBalancer
     EOF
   ]
+
+  # Use these options for upgrade behavior
+  replace      = false
+  recreate_pods = false
+  reuse_values = true  # Keep existing values from previous release when upgrading
+
+  # Wait for resources to be ready after applying
+  wait = true
+  timeout = 300  # Increase this if necessary based on your cluster's performance
 }
+
+
