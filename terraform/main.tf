@@ -35,7 +35,7 @@ provider "helm" {
   }
 }
 
-#Kubernetes deployment for webapp
+# Kubernetes deployment for webapp
 resource "kubernetes_deployment" "webapp" {
   metadata {
     name = "webapp-deployment"
@@ -88,12 +88,12 @@ resource "kubernetes_deployment" "webapp" {
             value = var.openai_api_key
           }
           env {
-            name  = "NEXT_PUBLIC_API_URL"
-            value = var.next_public_api_url
+            name  = "NEXT_PUBLIC_WEBAPP_URL"
+            value = var.next_public_webapp_url
           }
           env {
-            name  = "WEBAPP_URL"
-            value = var.webapp_url
+            name  = "API_URL"
+            value = var.api_url
           }
           env {
             name  = "NEXT_PUBLIC_CLERK_SIGN_IN_URL"
@@ -102,10 +102,6 @@ resource "kubernetes_deployment" "webapp" {
           env {
             name  = "NEXT_PUBLIC_CLERK_SIGN_UP_URL"
             value = var.clerk_sign_up_url
-          }
-          env { 
-            name  = "NEXT_PUBLIC_STORAGE_API_URL" 
-            value = var.storage_api_url
           }
         }
       }
@@ -193,12 +189,12 @@ resource "kubernetes_deployment" "api" {
             value = var.clerk_webhook_secret
           }
           env {
-            name  = "NEXT_PUBLIC_API_URL"
-            value = var.next_public_api_url
+            name  = "API_URL"
+            value = var.api_url
           }
-          env { 
-            name  = "NEXT_PUBLIC_STORAGE_API_URL" 
-            value = var.storage_api_url
+          env {
+            name  = "NEXT_PUBLIC_WEBAPP_URL"
+            value = var.next_public_webapp_url  # So API can send correct CORS headers for the frontend
           }
         }
       }
@@ -221,7 +217,7 @@ resource "kubernetes_service" "api" {
       target_port = 5000
     }
 
-    type = "ClusterIP"
+    type = "ClusterIP"  # Internal service
   }
 }
 
@@ -290,7 +286,7 @@ resource "kubernetes_service" "database" {
       target_port = 5432
     }
 
-    type = "ClusterIP"
+    type = "ClusterIP"  # Internal service
   }
 }
 

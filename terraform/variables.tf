@@ -97,12 +97,7 @@ variable "service_account_email" {
   default     = "github-actions-deployer@nodal-clock-433208-b4.iam.gserviceaccount.com"
 }
 
-variable "next_public_api_url" {
-  description = "Next.js public API URL"
-  type        = string
-  sensitive   = true
-}
-
+# Clerk URLs
 variable "clerk_sign_in_url" {
   description = "Clerk sign-in URL"
   type        = string
@@ -121,21 +116,22 @@ variable "clerk_webhook_secret" {
   sensitive   = true
 }
 
-
-variable "webapp_url" {
-  description = "Webapp URL for CORS settings"
+# Webapp and API URLs
+variable "next_public_webapp_url" {
+  description = "Public URL for the webapp, updated after deployment"
   type        = string
   sensitive   = true
 }
 
+variable "api_url" {
+  description = "Internal API URL for backend services communication"
+  type        = string
+  default     = "api-service.default.svc.cluster.local"
+}
+
+# Database host
 variable "database_host" {
   description = "Database host URL"
-  type        = string
-  sensitive   = true
-}
-
-variable "storage_api_url" {
-  description = "API URL used for storage access (points to the ingress IP)"
   type        = string
   sensitive   = true
 }

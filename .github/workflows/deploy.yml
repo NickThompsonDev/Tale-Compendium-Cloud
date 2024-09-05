@@ -53,8 +53,8 @@ jobs:
             --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
             --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
             --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
-            --build-arg NEXT_PUBLIC_API_URL="http://placeholder-for-api-url" \
-            --build-arg STORAGE_API_URL="http://placeholder-for-storage-url" \
+            --build-arg API_URL="api-service.default.svc.cluster.local" \
+            --build-arg NEXT_PUBLIC_WEBAPP_URL="http://placeholder-for-webapp-url" \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} -f ./webapp/Dockerfile ./webapp
 
           docker build \
@@ -66,8 +66,7 @@ jobs:
             --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
             --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
             --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
-            --build-arg NEXT_PUBLIC_API_URL="http://placeholder-for-api-url" \
-            --build-arg STORAGE_API_URL="http://placeholder-for-storage-url" \
+            --build-arg API_URL="api-service.default.svc.cluster.local" \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} -f ./api/Dockerfile ./api
     
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
@@ -89,7 +88,6 @@ jobs:
             gcloud container images delete gcr.io/${PROJECT_ID}/api@$digest --quiet --force-delete-tags
           done
 
-
       - name: Terraform Init and Apply (Initial Deployment)
         working-directory: terraform
         env:
@@ -105,9 +103,8 @@ jobs:
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
           TF_VAR_region: ${{ secrets.GKE_REGION }}
           TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
-          TF_VAR_next_public_api_url: "http://placeholder-for-api-url"
-          TF_VAR_storage_api_url: "http://placeholder-for-storage-url"
-          TF_VAR_webapp_url: "http://placeholder-for-webapp-url"
+          TF_VAR_api_url: "api-service.default.svc.cluster.local"
+          TF_VAR_next_public_webapp_url: "http://placeholder-for-webapp-url"
           TF_VAR_database_host: "database-service.default.svc.cluster.local"
           TF_VAR_clerk_sign_in_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
           TF_VAR_clerk_sign_up_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
@@ -116,56 +113,15 @@ jobs:
           terraform init
           terraform apply -auto-approve
         
-  update-urls:
-    runs-on: ubuntu-latest
-    needs: deploy-initial
-    steps:
-
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v1
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          install_components: kubectl
-
-      - name: Configure kubectl to use the GKE cluster
+      - name: Retrieve and Apply Updated Ingress URL
         run: |
-          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
+          INGRESS_URL=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          echo "INGRESS_URL=http://$INGRESS_URL" >> $GITHUB_ENV
 
-      - name: Retrieve IPs and Update Terraform
-        run: |
-          INGRESS_IP=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-          API_IP=$(kubectl get svc api-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-          DATABASE_IP=$(kubectl get svc database-service -o jsonpath='{.spec.clusterIP}')
-          echo "INGRESS_IP=http://$INGRESS_IP" >> $GITHUB_ENV
-          echo "API_IP=http://$API_IP" >> $GITHUB_ENV
-          echo "DATABASE_IP=$DATABASE_IP" >> $GITHUB_ENV
-
-      - name: Terraform Apply with Updated URLs
+      - name: Terraform Apply Updated Ingress URL
         working-directory: terraform
         env:
           TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
-          TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-          TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
-          TF_VAR_clerk_secret_key: ${{ secrets.CLERK_SECRET_KEY }}
-          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          TF_VAR_database_user: ${{ secrets.DATABASE_USER }}
-          TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
-          TF_VAR_database_name: ${{ secrets.DATABASE_NAME }}
-          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          TF_VAR_region: ${{ secrets.GKE_REGION }}
-          TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
-          TF_VAR_next_public_api_url: ${{ env.API_IP }}
-          TF_VAR_storage_api_url: ${{ env.INGRESS_IP }}
-          TF_VAR_webapp_url: ${{ env.WEBAPP_IP }}
-          TF_VAR_database_host: ${{ env.DATABASE_IP }}
+          TF_VAR_next_public_webapp_url: ${{ env.INGRESS_URL }}
         run: |
           terraform apply -auto-approve

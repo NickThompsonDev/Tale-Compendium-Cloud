@@ -2,7 +2,7 @@ import axiosInstance from './axiosInstance';
 
 export const getImageUrl = async (storageId: number) => {
   try {
-    const imageUrl = `${process.env.NEXT_PUBLIC_API_URL}/storage/${storageId}`;
+    const imageUrl = `${process.env.NEXT_PUBLIC_WEBAPP_URL}/storage/${storageId}`;
     return imageUrl;
   } catch (error) {
     console.error('Error constructing image URL:', error);
