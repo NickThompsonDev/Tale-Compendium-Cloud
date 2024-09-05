@@ -44,8 +44,9 @@ jobs:
       # Step 7: Get the Ingress URL (for later use in build)
       - name: Get Ingress URL
         run: |
-          INGRESS_URL=$(kubectl get svc -n ingress-nginx nginx-ingress-ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-          echo "INGRESS_URL=http://$INGRESS_URL" >> $GITHUB_ENV
+          INGRESS_IP=$(kubectl get svc -n ingress-nginx nginx-ingress-ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          echo "INGRESS_IP=$INGRESS_IP"
+          echo "INGRESS_URL=http://$INGRESS_IP" >> $GITHUB_ENV
 
       # Step 8: Apply Ingress Resource to map /api to api-service
       - name: Apply Ingress for API
