@@ -30,22 +30,11 @@ jobs:
       - name: Configure kubectl to use the GKE cluster
         run: |
           gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
-      
-      # kubectl get namespace ingress-nginx -o json | jq '.spec.finalizers = []' | kubectl replace --raw "/api/v1/namespaces/ingress-nginx/finalize" -f - 
-      # to delete hanging ingress
-     
-      # Step 5: Terraform Init and Apply (Non-Image Resources)
-      - name: Terraform Init and Apply (Non-Image Resources)
-        working-directory: terraform/setup
-        env:
-          TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
-          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
-          TF_VAR_region: ${{ secrets.GKE_REGION }}
+
+      # Step 5: Check if Helm release exists
+      - name: Check if Helm release exists
         run: |
-          terraform init
-          terraform import helm_release.nginx ingress-nginx/ingress-nginx || echo "Helm release does not exist, continuing with creation."
-          terraform apply -auto-approve
+          helm status nginx-ingress -n ingress-nginx || helm install nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace
 
       # Step 6: Get the Ingress URL (for later use in build)
       - name: Get Ingress URL
