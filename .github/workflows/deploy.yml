@@ -36,14 +36,17 @@ jobs:
         run: |
           gcloud auth configure-docker
 
-      # Step 6: Check if Helm release exists and apply custom values.yaml
-      - name: Check if Helm release exists and apply custom values
+      # Step 6: Add the Helm repo and Check if Helm release exists, then install or upgrade with custom values.yaml
+      - name: Add Helm repo and Check if Helm release exists
         run: |
+          helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+          helm repo update
           if helm status nginx-ingress -n ingress-nginx; then
             helm upgrade nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx -f helm/values.yaml
           else
             helm install nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace -f helm/values.yaml
           fi
+
 
       # Step 7: Get the Ingress URL (for later use in build)
       - name: Get Ingress URL
