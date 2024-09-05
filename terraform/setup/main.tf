@@ -52,8 +52,4 @@ resource "helm_release" "nginx" {
 
   # Force an upgrade if the resource already exists
   force_update = true
-
-  lifecycle {
-    ignore_changes = all
-  }
 }
