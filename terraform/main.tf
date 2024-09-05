@@ -72,8 +72,8 @@ resource "kubernetes_deployment" "webapp" {
             value = var.next_public_webapp_url
           }
           env {
-            name  = "API_URL"
-            value = var.api_url
+            name  = "NEXT_PUBLIC_API_URL"
+            value = var.next_public_api_url
           }
           env {
             name  = "NEXT_PUBLIC_CLERK_SIGN_IN_URL"
@@ -169,8 +169,8 @@ resource "kubernetes_deployment" "api" {
             value = var.clerk_webhook_secret
           }
           env {
-            name  = "API_URL"
-            value = var.api_url
+            name  = "NEXT_PUBLIC_API_URL"
+            value = var.next_public_api_url
           }
           env {
             name  = "NEXT_PUBLIC_WEBAPP_URL"

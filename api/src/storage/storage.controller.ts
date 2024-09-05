@@ -46,7 +46,7 @@ export class StorageController {
     );
 
     // Log the URL where the file can be accessed
-    const fileUrl = `${process.env.NEXT_PUBLIC_WEBAPP_URL || process.env.API_URL}/storage/${savedFile.id}`;
+    const fileUrl = `${process.env.NEXT_PUBLIC_API_URL}/storage/${savedFile.id}`;
     this.logger.log(`File uploaded with URL: ${fileUrl}`);
 
     return savedFile;
