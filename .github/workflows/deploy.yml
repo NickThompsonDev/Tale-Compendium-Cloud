@@ -79,8 +79,8 @@ jobs:
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
 
       # Step 9: Terraform Apply (Image-related Resources)
-      - name: Terraform Apply (Image-related Resources)
-        working-directory: terraform/deploy
+      - name: Terraform Apply
+        working-directory: terraform
         env:
           TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
@@ -96,4 +96,5 @@ jobs:
           TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
           TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
         run: |
+          terraform init -upgrade
           terraform apply -auto-approve
