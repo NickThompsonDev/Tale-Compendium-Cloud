@@ -197,7 +197,7 @@ resource "kubernetes_service" "api" {
       target_port = 5000
     }
 
-    type = "ClusterIP"
+    type = "LoadBalancer"
   }
 }
 

@@ -47,7 +47,32 @@ jobs:
           INGRESS_URL=$(kubectl get svc -n ingress-nginx nginx-ingress-ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
           echo "INGRESS_URL=http://$INGRESS_URL" >> $GITHUB_ENV
 
-      # Step 8: Build and Push Docker Images
+      # Step 8: Apply Ingress Resource to map /api to api-service
+      - name: Apply Ingress for API
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: api-ingress
+            namespace: default
+            annotations:
+              kubernetes.io/ingress.class: "nginx"
+          spec:
+            rules:
+            - host: "$INGRESS_URL"
+              http:
+                paths:
+                - path: /api
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: api-service
+                      port:
+                        number: 5000
+          EOF
+
+      # Step 9: Build and Push Docker Images
       - name: Build and Push Docker Images
         run: |
           docker build \
@@ -59,7 +84,7 @@ jobs:
             --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
             --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
             --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
-            --build-arg API_URL="api-service.default.svc.cluster.local" \
+            --build-arg NEXT_PUBLIC_API_URL="${{ env.INGRESS_URL }}/api" \
             --build-arg NEXT_PUBLIC_WEBAPP_URL="${{ env.INGRESS_URL }}" \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} -f ./webapp/Dockerfile ./webapp
 
@@ -72,13 +97,13 @@ jobs:
             --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
             --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
             --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
-            --build-arg API_URL="api-service.default.svc.cluster.local" \
+            --build-arg NEXT_PUBLIC_API_URL="${{ env.INGRESS_URL }}/api" \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} -f ./api/Dockerfile ./api
     
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
 
-      # Step 9: Terraform Apply (Image-related Resources)
+      # Step 10: Terraform Apply (Image-related Resources)
       - name: Terraform Apply
         working-directory: terraform
         env:
