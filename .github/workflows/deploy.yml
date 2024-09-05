@@ -36,25 +36,22 @@ jobs:
         working-directory: terraform
         env:
           TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
-          TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          TF_VAR_clerk_secret_key: ${{ secrets.CLERK_SECRET_KEY }}
-          TF_VAR_clerk_sign_in_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
-          TF_VAR_clerk_sign_up_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
-          TF_VAR_clerk_webhook_secret: ${{ secrets.CLERK_WEBHOOK_SECRET }}
-          TF_VAR_database_host: ${{ secrets.DATABASE_HOST }}
-          TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
-          TF_VAR_next_public_webapp_url: ${{ secrets.NEXT_PUBLIC_WEBAPP_URL }}
-          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-          TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
+          TF_VAR_region: ${{ secrets.GKE_REGION }}
         run: |
           terraform init
           terraform apply -auto-approve -target=kubernetes_namespace.ingress -target=helm_release.nginx
 
-      # Step 6: Build and Push Docker Images
-      - name: Build and Push Docker Images
+      # Step 6: Get the Ingress URL (for later use in build)
+      - name: Retrieve Ingress URL
         run: |
           INGRESS_URL=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          echo "INGRESS_URL=http://$INGRESS_URL" >> $GITHUB_ENV
+
+      # Step 7: Build and Push Docker Images
+      - name: Build and Push Docker Images
+        run: |
           docker build \
             --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }} \
             --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
@@ -65,7 +62,7 @@ jobs:
             --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
             --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
             --build-arg API_URL="api-service.default.svc.cluster.local" \
-            --build-arg NEXT_PUBLIC_WEBAPP_URL="http://$INGRESS_URL" \
+            --build-arg NEXT_PUBLIC_WEBAPP_URL="${{ env.INGRESS_URL }}" \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} -f ./webapp/Dockerfile ./webapp
 
           docker build \
@@ -83,17 +80,18 @@ jobs:
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
 
-      # Step 7: Terraform Apply (Image-related resources)
+      # Step 8: Terraform Apply (Image-related Resources)
       - name: Terraform Apply (Image-related Resources)
         working-directory: terraform
         env:
           TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
           TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           TF_VAR_clerk_secret_key: ${{ secrets.CLERK_SECRET_KEY }}
           TF_VAR_clerk_sign_in_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
           TF_VAR_clerk_sign_up_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
           TF_VAR_clerk_webhook_secret: ${{ secrets.CLERK_WEBHOOK_SECRET }}
-          TF_VAR_database_host: ${{ secrets.DATABASE_HOST }}
+          TF_VAR_database_host: "database-service.default.svc.cluster.local"
           TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
           TF_VAR_next_public_webapp_url: ${{ env.INGRESS_URL }}
           TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
