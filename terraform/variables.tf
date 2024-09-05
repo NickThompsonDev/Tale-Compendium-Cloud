@@ -135,3 +135,9 @@ variable "database_host" {
   type        = string
   sensitive   = true
 }
+
+variable "docker_image_tag" {
+  description = "Tag for the Docker image"
+  type        = string
+  default     = "latest"
+}

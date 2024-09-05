@@ -128,6 +128,7 @@ resource "kubernetes_service" "webapp" {
   }
 }
 
+# Kubernetes deployment for API
 resource "kubernetes_deployment" "api" {
   metadata {
     name = "api-deployment"
@@ -194,7 +195,7 @@ resource "kubernetes_deployment" "api" {
           }
           env {
             name  = "NEXT_PUBLIC_WEBAPP_URL"
-            value = var.next_public_webapp_url  # So API can send correct CORS headers for the frontend
+            value = var.next_public_webapp_url
           }
         }
       }
@@ -221,6 +222,7 @@ resource "kubernetes_service" "api" {
   }
 }
 
+# Kubernetes deployment for database
 resource "kubernetes_deployment" "database" {
   metadata {
     name = "database-deployment"

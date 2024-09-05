@@ -27,23 +27,20 @@ jobs:
         run: |
           gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Set up Docker to use the gcloud command-line tool as a credential helper
+      - name: Terraform Init and Apply (Create Infrastructure)
+        working-directory: terraform
+        env:
+          TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_region: ${{ secrets.GKE_REGION }}
+          TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
         run: |
-          gcloud auth configure-docker
-
-      - name: Cleanup existing Kubernetes resources
-        run: |
-          kubectl delete deployment webapp-deployment --ignore-not-found --timeout=30s || true
-          kubectl delete deployment api-deployment --ignore-not-found --timeout=30s || true
-          kubectl delete deployment database-deployment --ignore-not-found --timeout=30s || true
-          kubectl delete service webapp-service --ignore-not-found --timeout=30s || true
-          kubectl delete service api-service --ignore-not-found --timeout=30s || true
-          kubectl delete service database-service --ignore-not-found --timeout=30s || true
-          kubectl delete service ingress-nginx --ignore-not-found --timeout=30s || true
-          kubectl delete namespace ingress-nginx --ignore-not-found --timeout=60s || true
+          terraform init
+          terraform apply -target=module.infrastructure -auto-approve
 
       - name: Build and Push Docker Images
         run: |
+          INGRESS_URL=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
           docker build \
             --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }} \
             --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
@@ -54,7 +51,7 @@ jobs:
             --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
             --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
             --build-arg API_URL="api-service.default.svc.cluster.local" \
-            --build-arg NEXT_PUBLIC_WEBAPP_URL="http://placeholder-for-webapp-url" \
+            --build-arg NEXT_PUBLIC_WEBAPP_URL="http://$INGRESS_URL" \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} -f ./webapp/Dockerfile ./webapp
 
           docker build \
@@ -72,6 +69,28 @@ jobs:
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
 
+      - name: Terraform Apply (Deploy with Images)
+        working-directory: terraform
+        env:
+          TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
+          TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+          TF_VAR_clerk_secret_key: ${{ secrets.CLERK_SECRET_KEY }}
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          TF_VAR_database_user: ${{ secrets.DATABASE_USER }}
+          TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
+          TF_VAR_database_name: ${{ secrets.DATABASE_NAME }}
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_region: ${{ secrets.GKE_REGION }}
+          TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
+          TF_VAR_docker_image_tag: ${{ github.sha }}
+          TF_VAR_next_public_webapp_url: "http://$INGRESS_URL"
+          TF_VAR_api_url: "api-service.default.svc.cluster.local"
+          TF_VAR_database_host: "database-service.default.svc.cluster.local"
+        run: |
+          terraform apply -auto-approve
+
       - name: Cleanup old Docker images in GCR
         run: |
           # Get the current SHA
@@ -87,41 +106,3 @@ jobs:
           gcloud container images list-tags gcr.io/${PROJECT_ID}/api --format='get(digest)' --filter='NOT tags:(${SHA},latest)' | while read digest; do
             gcloud container images delete gcr.io/${PROJECT_ID}/api@$digest --quiet --force-delete-tags
           done
-
-      - name: Terraform Init and Apply (Initial Deployment)
-        working-directory: terraform
-        env:
-          TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
-          TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-          TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
-          TF_VAR_clerk_secret_key: ${{ secrets.CLERK_SECRET_KEY }}
-          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          TF_VAR_database_user: ${{ secrets.DATABASE_USER }}
-          TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
-          TF_VAR_database_name: ${{ secrets.DATABASE_NAME }}
-          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          TF_VAR_region: ${{ secrets.GKE_REGION }}
-          TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
-          TF_VAR_api_url: "api-service.default.svc.cluster.local"
-          TF_VAR_next_public_webapp_url: "http://placeholder-for-webapp-url"
-          TF_VAR_database_host: "database-service.default.svc.cluster.local"
-          TF_VAR_clerk_sign_in_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
-          TF_VAR_clerk_sign_up_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
-          TF_VAR_clerk_webhook_secret: ${{ secrets.CLERK_WEBHOOK_SECRET }}
-        run: |
-          terraform init
-          terraform apply -auto-approve
-        
-      - name: Retrieve and Apply Updated Ingress URL
-        run: |
-          INGRESS_URL=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-          echo "INGRESS_URL=http://$INGRESS_URL" >> $GITHUB_ENV
-
-      - name: Terraform Apply Updated Ingress URL
-        working-directory: terraform
-        env:
-          TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
-          TF_VAR_next_public_webapp_url: ${{ env.INGRESS_URL }}
-        run: |
-          terraform apply -auto-approve
