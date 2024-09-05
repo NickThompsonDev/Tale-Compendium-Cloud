@@ -41,7 +41,7 @@ jobs:
           TF_VAR_region: ${{ secrets.GKE_REGION }}
         run: |
           terraform init
-          terraform apply -auto-approve -target=kubernetes_namespace.ingress -target=helm_release.nginx
+          terraform apply -auto-approve
 
       # Step 6: Get the Ingress URL (for later use in build)
       - name: Retrieve Ingress URL

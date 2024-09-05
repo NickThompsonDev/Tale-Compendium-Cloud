@@ -42,9 +42,11 @@ resource "kubernetes_namespace" "ingress" {
   }
 
   lifecycle {
-    ignore_changes = all  # Ignore changes to this resource to prevent errors if it already exists
+    prevent_destroy = true  # Prevent deletion if it already exists
+    ignore_changes  = [metadata]  # Ignore changes to metadata to prevent issues
   }
 }
+
 
 # Install NGINX Ingress Controller using Helm
 resource "helm_release" "nginx" {
