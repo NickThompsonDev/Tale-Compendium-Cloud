@@ -30,30 +30,22 @@ jobs:
       - name: Configure kubectl to use the GKE cluster
         run: |
           gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
-      
+
       # Step 5: Authenticate Docker to GCR
       - name: Authenticate Docker to GCR
         run: |
           gcloud auth configure-docker
 
-      # Step 6: Terraform Init and Apply (Non-Image Resources)
-      - name: Terraform Init and Apply (Non-Image Resources)
-        working-directory: terraform/setup
-        env:
-          TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
-          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          TF_VAR_cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
-          TF_VAR_region: ${{ secrets.GKE_REGION }}
+      # Step 6: Check if Helm release exists
+      - name: Check if Helm release exists
         run: |
-          terraform init
-          terraform apply -auto-approve
+          helm status nginx-ingress -n ingress-nginx || helm install nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace
 
-      # Step 7: Get the Ingress URL
+      # Step 7: Get the Ingress URL (for later use in build)
       - name: Get Ingress URL
         run: |
           INGRESS_URL=$(kubectl get svc -n ingress-nginx nginx-ingress-ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
           echo "INGRESS_URL=http://$INGRESS_URL" >> $GITHUB_ENV
-
 
       # Step 8: Build and Push Docker Images
       - name: Build and Push Docker Images
