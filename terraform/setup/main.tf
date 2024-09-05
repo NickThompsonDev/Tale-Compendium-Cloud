@@ -43,7 +43,7 @@ resource "kubernetes_namespace" "ingress" {
 
   lifecycle {
     prevent_destroy = true  # Prevent deletion if it already exists
-    ignore_changes  = [metadata]  # Ignore changes to metadata to prevent issues
+    ignore_changes  = all
   }
 }
 
@@ -63,5 +63,12 @@ resource "helm_release" "nginx" {
     EOF
   ]
 
-  reuse_values = true
+  # Reuse existing values and resources if they exist
+  recreate_pods  = false
+  cleanup_on_fail = true
+
+  lifecycle {
+    ignore_changes = all
+  }
 }
+
