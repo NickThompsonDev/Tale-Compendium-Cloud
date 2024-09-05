@@ -20,13 +20,22 @@ data "google_container_cluster" "primary" {
   location = var.region
 }
 
-# Kubernetes provider using GKE cluster
+# Kubernetes provider configuration
 provider "kubernetes" {
   host                   = "https://${data.google_container_cluster.primary.endpoint}"
   token                  = data.google_service_account_access_token.my_kubernetes_sa.access_token
   cluster_ca_certificate = base64decode(data.google_container_cluster.primary.master_auth[0].cluster_ca_certificate)
 }
 
+provider "helm" {
+  kubernetes {
+    host                   = "https://${data.google_container_cluster.primary.endpoint}"
+    token                  = data.google_service_account_access_token.my_kubernetes_sa.access_token
+    cluster_ca_certificate = base64decode(data.google_container_cluster.primary.master_auth[0].cluster_ca_certificate)
+  }
+}
+
+# Namespace creation
 resource "kubernetes_namespace" "ingress" {
   metadata {
     name = "ingress-nginx"
@@ -34,16 +43,6 @@ resource "kubernetes_namespace" "ingress" {
 
   lifecycle {
     ignore_changes = all  # Ignore changes to this resource to prevent errors if it already exists
-    prevent_destroy = true  # Prevent accidental deletion
-  }
-}
-
-
-# Create a service account for the ingress controller
-resource "kubernetes_service_account" "nginx" {
-  metadata {
-    name      = "nginx-ingress-serviceaccount"
-    namespace = kubernetes_namespace.ingress.metadata[0].name
   }
 }
 
@@ -52,7 +51,7 @@ resource "helm_release" "nginx" {
   name       = "nginx-ingress"
   repository = "https://kubernetes.github.io/ingress-nginx"
   chart      = "ingress-nginx"
-  namespace  = kubernetes_namespace.ingress.metadata[0].name
+  namespace  = "ingress-nginx"
 
   values = [
     <<-EOF
@@ -62,14 +61,5 @@ resource "helm_release" "nginx" {
     EOF
   ]
 
-  # Use these options for upgrade behavior
-  replace      = false
-  recreate_pods = false
-  reuse_values = true  # Keep existing values from previous release when upgrading
-
-  # Wait for resources to be ready after applying
-  wait = true
-  timeout = 300  # Increase this if necessary based on your cluster's performance
+  reuse_values = true
 }
-
-
