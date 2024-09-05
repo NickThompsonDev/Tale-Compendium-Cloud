@@ -44,9 +44,9 @@ jobs:
           terraform apply -auto-approve
 
       # Step 6: Get the Ingress URL (for later use in build)
-      - name: Retrieve Ingress URL
+      - name: Get Ingress URL
         run: |
-          INGRESS_URL=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          INGRESS_URL=$(kubectl get svc -n ingress-nginx nginx-ingress-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
           echo "INGRESS_URL=http://$INGRESS_URL" >> $GITHUB_ENV
 
       # Step 7: Build and Push Docker Images
