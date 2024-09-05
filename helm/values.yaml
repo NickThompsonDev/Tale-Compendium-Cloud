@@ -1,0 +1,16 @@
+controller:
+  service:
+    type: LoadBalancer  # This ensures the service is exposed via an external IP
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  paths:
+    - path: /api
+      pathType: Prefix
+      backend:
+        service:
+          name: api-service
+          port:
+            number: 5000

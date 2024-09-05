@@ -36,10 +36,14 @@ jobs:
         run: |
           gcloud auth configure-docker
 
-      # Step 6: Check if Helm release exists
-      - name: Check if Helm release exists
+      # Step 6: Check if Helm release exists and apply custom values.yaml
+      - name: Check if Helm release exists and apply custom values
         run: |
-          helm status nginx-ingress -n ingress-nginx || helm install nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace
+          if helm status nginx-ingress -n ingress-nginx; then
+            helm upgrade nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx -f helm/values.yaml
+          else
+            helm install nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace -f helm/values.yaml
+          fi
 
       # Step 7: Get the Ingress URL (for later use in build)
       - name: Get Ingress URL
@@ -48,30 +52,7 @@ jobs:
           echo "INGRESS_IP=$INGRESS_IP"
           echo "INGRESS_URL=http://$INGRESS_IP" >> $GITHUB_ENV
 
-      # Step 8: Apply Ingress Resource to map /api to api-service
-      - name: Apply Ingress for API
-        run: |
-          cat <<EOF | kubectl apply -f -
-          apiVersion: networking.k8s.io/v1
-          kind: Ingress
-          metadata:
-            name: api-ingress
-            namespace: default
-          spec:
-            ingressClassName: nginx
-            rules:
-            - http:
-                paths:
-                - path: /api
-                  pathType: Prefix
-                  backend:
-                    service:
-                      name: api-service
-                      port:
-                        number: 5000
-          EOF
-
-      # Step 9: Build and Push Docker Images
+      # Step 8: Build and Push Docker Images
       - name: Build and Push Docker Images
         run: |
           docker build \
@@ -102,7 +83,7 @@ jobs:
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
 
-      # Step 10: Terraform Apply (Image-related Resources)
+      # Step 9: Terraform Apply (Image-related Resources)
       - name: Terraform Apply
         working-directory: terraform
         env:
