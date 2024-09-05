@@ -30,8 +30,13 @@ jobs:
       - name: Configure kubectl to use the GKE cluster
         run: |
           gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
+      
+      # Step 5: Import existing Helm release if it exists
+      - name: Import existing Helm release if it exists
+        run: |
+          terraform import helm_release.nginx ingress-nginx || echo "Helm release not found, continuing..."
 
-      # Step 5: Terraform Init and Apply (Non-Image Resources)
+      # Step 6: Terraform Init and Apply (Non-Image Resources)
       - name: Terraform Init and Apply (Non-Image Resources)
         working-directory: terraform/setup
         env:
@@ -43,13 +48,13 @@ jobs:
           terraform init
           terraform apply -auto-approve
 
-      # Step 6: Get the Ingress URL (for later use in build)
+      # Step 7: Get the Ingress URL (for later use in build)
       - name: Get Ingress URL
         run: |
           INGRESS_URL=$(kubectl get svc -n ingress-nginx nginx-ingress-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
           echo "INGRESS_URL=http://$INGRESS_URL" >> $GITHUB_ENV
 
-      # Step 7: Build and Push Docker Images
+      # Step 8: Build and Push Docker Images
       - name: Build and Push Docker Images
         run: |
           docker build \
@@ -80,7 +85,7 @@ jobs:
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
 
-      # Step 8: Terraform Apply (Image-related Resources)
+      # Step 9: Terraform Apply (Image-related Resources)
       - name: Terraform Apply (Image-related Resources)
         working-directory: terraform/deploy
         env:

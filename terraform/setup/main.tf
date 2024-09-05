@@ -37,6 +37,10 @@ resource "helm_release" "nginx" {
   repository       = "https://kubernetes.github.io/ingress-nginx"
   chart            = "ingress-nginx"
   namespace        = "ingress-nginx"
+  create_namespace = true
+  reuse_values     = true
+  cleanup_on_fail  = true
+  force_update     = true
 
   values = [
     <<-EOF
@@ -46,10 +50,8 @@ resource "helm_release" "nginx" {
     EOF
   ]
 
-  create_namespace = true
-  reuse_values     = true  # Reuse existing values if the release already exists
-  cleanup_on_fail  = true  # Ensure cleanup on failure to avoid stuck states
-
-  # Force an upgrade if the resource already exists
-  force_update = true
+  lifecycle {
+    ignore_changes = all
+  }
 }
+
