@@ -38,7 +38,6 @@ resource "helm_release" "nginx" {
   chart            = "ingress-nginx"
   namespace        = "ingress-nginx"
   create_namespace = true
-  reuse_values     = true
   cleanup_on_fail  = true
   force_update     = true
 
@@ -50,8 +49,8 @@ resource "helm_release" "nginx" {
     EOF
   ]
 
+  # Ensure Terraform can ignore updates unless critical
   lifecycle {
     ignore_changes = all
   }
 }
-

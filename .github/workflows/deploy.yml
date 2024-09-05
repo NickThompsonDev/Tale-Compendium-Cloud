@@ -30,11 +30,11 @@ jobs:
       - name: Configure kubectl to use the GKE cluster
         run: |
           gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
-      
-      # Step 5: Import existing Helm release if it exists
-      - name: Import existing Helm release if it exists
+
+      # Step 5: Terraform Import Helm Release (if exists)
+      - name: Import Helm Release if exists
         run: |
-          terraform import helm_release.nginx ingress-nginx || echo "Helm release not found, continuing..."
+          terraform -chdir=terraform/setup import helm_release.nginx ingress-nginx || echo "Helm release does not exist, continuing with creation."
 
       # Step 6: Terraform Init and Apply (Non-Image Resources)
       - name: Terraform Init and Apply (Non-Image Resources)
