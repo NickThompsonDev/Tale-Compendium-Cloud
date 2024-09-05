@@ -33,7 +33,7 @@ jobs:
 
       # Step 5: Terraform Init and Apply (Non-Image Resources)
       - name: Terraform Init and Apply (Non-Image Resources)
-        working-directory: terraform
+        working-directory: terraform/setup
         env:
           TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
@@ -82,7 +82,7 @@ jobs:
 
       # Step 8: Terraform Apply (Image-related Resources)
       - name: Terraform Apply (Image-related Resources)
-        working-directory: terraform
+        working-directory: terraform/deploy
         env:
           TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}

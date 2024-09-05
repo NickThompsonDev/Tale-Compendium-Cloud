@@ -4,17 +4,7 @@ provider "google" {
   region      = var.region
 }
 
-# Use the same service account that is authenticated in the GitHub Actions workflow
-data "google_client_config" "provider" {}
-
-# Retrieve an access token for the specified service account
-data "google_service_account_access_token" "my_kubernetes_sa" {
-  target_service_account = var.service_account_email
-  scopes                 = ["userinfo-email", "cloud-platform"]
-  lifetime               = "3600s"
-}
-
-# Retrieve the GKE cluster details
+# Use the existing GKE cluster that was created in the setup step
 data "google_container_cluster" "my_cluster" {
   name     = var.cluster_name
   location = var.region
@@ -27,12 +17,6 @@ provider "kubernetes" {
   cluster_ca_certificate = base64decode(
     data.google_container_cluster.my_cluster.master_auth[0].cluster_ca_certificate,
   )
-}
-
-provider "helm" {
-  kubernetes {
-    config_path = "~/.kube/config"
-  }
 }
 
 # Kubernetes deployment for webapp
@@ -128,7 +112,6 @@ resource "kubernetes_service" "webapp" {
   }
 }
 
-# Kubernetes deployment for API
 resource "kubernetes_deployment" "api" {
   metadata {
     name = "api-deployment"
@@ -159,7 +142,7 @@ resource "kubernetes_deployment" "api" {
           }
           env {
             name  = "DATABASE_HOST"
-            value = "database-service.default.svc.cluster.local"
+            value = var.database_host
           }
           env {
             name  = "DATABASE_PORT"
@@ -218,11 +201,10 @@ resource "kubernetes_service" "api" {
       target_port = 5000
     }
 
-    type = "ClusterIP"  # Internal service
+    type = "ClusterIP"
   }
 }
 
-# Kubernetes deployment for database
 resource "kubernetes_deployment" "database" {
   metadata {
     name = "database-deployment"
@@ -288,37 +270,6 @@ resource "kubernetes_service" "database" {
       target_port = 5432
     }
 
-    type = "ClusterIP"  # Internal service
+    type = "ClusterIP"
   }
-}
-
-# Ingress Namespace
-resource "kubernetes_namespace" "ingress" {
-  metadata {
-    name = "ingress-nginx"
-  }
-}
-
-# Service Account for Ingress Controller
-resource "kubernetes_service_account" "nginx" {
-  metadata {
-    name      = "nginx-ingress-serviceaccount"
-    namespace = kubernetes_namespace.ingress.metadata[0].name
-  }
-}
-
-# NGINX Ingress Controller (using Helm)
-resource "helm_release" "nginx" {
-  name       = "nginx-ingress"
-  repository = "https://kubernetes.github.io/ingress-nginx"
-  chart      = "ingress-nginx"
-  namespace  = kubernetes_namespace.ingress.metadata[0].name
-
-  values = [
-    <<-EOF
-      controller:
-        service:
-          type: LoadBalancer
-    EOF
-  ]
 }
