@@ -34,6 +34,7 @@ resource "kubernetes_namespace" "ingress" {
 
   lifecycle {
     ignore_changes = all  # Ignore changes to this resource to prevent errors if it already exists
+    prevent_destroy = true  # Prevent accidental deletion
   }
 }
 
