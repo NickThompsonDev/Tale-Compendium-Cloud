@@ -31,12 +31,17 @@ jobs:
         run: |
           gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
 
-      # Step 5: Authenticate Docker to GCR
+      # Step 5: Apply the RBAC configuration
+      - name: Apply RBAC Configuration
+        run: |
+          kubectl apply -f k8s/rbac.authorization.yaml
+
+      # Step 6: Authenticate Docker to GCR
       - name: Authenticate Docker to GCR
         run: |
           gcloud auth configure-docker
 
-      # Step 6: Apply Kubernetes manifests for NGINX Ingress and webapp/api ingress
+      # Step 7: Apply Kubernetes manifests for NGINX Ingress and webapp/api ingress
       - name: Apply Kubernetes manifests
         run: |
           set -e  # Stop script on error
