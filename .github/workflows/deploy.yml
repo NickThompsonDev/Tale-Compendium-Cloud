@@ -36,14 +36,21 @@ jobs:
         run: |
           gcloud auth configure-docker
 
-      # Step 6: Install NGINX Ingress controller using Helm
-      - name: Install NGINX Ingress Controller with Helm
+      # Step 6: Install or Upgrade NGINX Ingress controller using Helm
+      - name: Install or Upgrade NGINX Ingress Controller with Helm
         run: |
           helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
           helm repo update
           
-          # Install or upgrade NGINX Ingress controller
-          helm install nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace
+          # Check if the release already exists, and if so, upgrade it
+          if helm status nginx-ingress --namespace ingress-nginx; then
+            echo "Upgrading existing NGINX Ingress controller..."
+            helm upgrade nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx
+          else
+            echo "Installing new NGINX Ingress controller..."
+            helm install nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace
+          fi
+
 
       # Step 7: Apply Kubernetes manifests for custom Ingress resource
       - name: Apply custom Ingress resource
