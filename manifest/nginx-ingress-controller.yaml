@@ -15,6 +15,8 @@ spec:
       labels:
         app: nginx-ingress
     spec:
+      # Ensure the GCP service account is correctly referenced
+      serviceAccountName: nginx-ingress-controller
       containers:
         - name: nginx-ingress
           image: quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.47.0
@@ -47,4 +49,3 @@ spec:
               drop:
                 - ALL
             runAsUser: 101
-      serviceAccountName: nginx-ingress-controller

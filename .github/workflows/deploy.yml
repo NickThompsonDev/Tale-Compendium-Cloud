@@ -31,12 +31,19 @@ jobs:
         run: |
           gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
 
-      # Step 5: Authenticate Docker to GCR
+      # Step 5: Annotate Kubernetes service account to use GCP SA
+      - name: Annotate Kubernetes service account
+        run: |
+          kubectl annotate serviceaccount nginx-ingress-controller \
+            --namespace ingress-nginx \
+            iam.gke.io/gcp-service-account=$(gcloud config get-value account) --overwrite
+
+      # Step 6: Authenticate Docker to GCR
       - name: Authenticate Docker to GCR
         run: |
           gcloud auth configure-docker
 
-      # Step 6: Apply Kubernetes manifests for NGINX Ingress and webapp/api ingress
+      # Step 7: Apply Kubernetes manifests for NGINX Ingress and webapp/api ingress
       - name: Apply Kubernetes manifests
         run: |
           set -e  # Stop script on error
@@ -60,7 +67,8 @@ jobs:
           kubectl get ingress -n default
 
 
-      # Step 7: Get the Ingress URL (for later use in build)
+
+      # Step 8: Get the Ingress URL (for later use in build)
       - name: Get Ingress URL
         run: |
           until [ ! -z "$INGRESS_IP" ]; do
@@ -72,7 +80,7 @@ jobs:
           echo "INGRESS_URL=http://$INGRESS_IP" >> $GITHUB_ENV
 
 
-      # Step 8: Build and Push Docker Images
+      # Step 9: Build and Push Docker Images
       - name: Build and Push Docker Images
         run: |
           docker build \
@@ -103,7 +111,7 @@ jobs:
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
 
-      # Step 9: Terraform Apply (Image-related Resources)
+      # Step 10: Terraform Apply (Image-related Resources)
       - name: Terraform Apply
         working-directory: terraform
         env:
