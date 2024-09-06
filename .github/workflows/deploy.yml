@@ -41,6 +41,7 @@ jobs:
         run: |
           helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
           helm repo update
+
           if helm status nginx-ingress -n ingress-nginx; then
             helm upgrade nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx -f helm/values.yaml
           else
@@ -51,9 +52,14 @@ jobs:
       # Step 7: Get the Ingress URL (for later use in build)
       - name: Get Ingress URL
         run: |
-          INGRESS_IP=$(kubectl get svc -n ingress-nginx nginx-ingress-ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          until [ ! -z "$INGRESS_IP" ]; do
+            echo "Waiting for Ingress IP..."
+            INGRESS_IP=$(kubectl get svc -n ingress-nginx nginx-ingress-ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            sleep 10
+          done
           echo "INGRESS_IP=$INGRESS_IP"
           echo "INGRESS_URL=http://$INGRESS_IP" >> $GITHUB_ENV
+
 
       # Step 8: Build and Push Docker Images
       - name: Build and Push Docker Images
