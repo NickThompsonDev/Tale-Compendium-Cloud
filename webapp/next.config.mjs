@@ -7,7 +7,7 @@ const nextConfig = {
         protocol: 'http',
         hostname: '35.196.90.174',
         port: '',
-        pathname: 'api/storage/**',
+        pathname: '/api/storage/**',
       },
     ],
   },
