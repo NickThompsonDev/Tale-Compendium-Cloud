@@ -10,9 +10,9 @@ data "google_container_cluster" "my_cluster" {
   location = var.region
 }
 
-# Configure the Kubernetes provider with the service account token
+# Configure the Kubernetes provider
 provider "kubernetes" {
-  config_path = "~/.kube/config"  # Use the kubectl configuration file
+  config_path = "~/.kube/config"
 }
 
 # Kubernetes deployment for webapp
@@ -86,25 +86,6 @@ resource "kubernetes_deployment" "webapp" {
         }
       }
     }
-  }
-}
-
-resource "kubernetes_service" "webapp" {
-  metadata {
-    name = "webapp-service"
-  }
-
-  spec {
-    selector = {
-      app = "webapp"
-    }
-
-    port {
-      port        = 80
-      target_port = 3000
-    }
-
-    type = "LoadBalancer"
   }
 }
 
@@ -182,25 +163,7 @@ resource "kubernetes_deployment" "api" {
   }
 }
 
-resource "kubernetes_service" "api" {
-  metadata {
-    name = "api-service"
-  }
-
-  spec {
-    selector = {
-      app = "api"
-    }
-
-    port {
-      port        = 5000
-      target_port = 5000
-    }
-
-    type = "LoadBalancer"
-  }
-}
-
+# Kubernetes deployment for database
 resource "kubernetes_deployment" "database" {
   metadata {
     name = "database-deployment"
