@@ -52,14 +52,22 @@ jobs:
           fi
 
 
-      # Step 7: Apply Kubernetes manifests for custom Ingress resource
+      # Step 6: Apply Kubernetes manifests for custom Ingress resource
       - name: Apply custom Ingress resource
         run: |
           set -e  # Stop script on error
 
+          # Wait for the NGINX Ingress controller and webhook to be ready
+          echo "Waiting for NGINX Ingress controller to be fully deployed..."
+          kubectl rollout status deployment nginx-ingress-controller -n ingress-nginx
+
+          echo "Checking if the admission webhook service is ready..."
+          kubectl get svc nginx-ingress-ingress-nginx-controller-admission -n ingress-nginx
+
           # Apply the ingress resource for webapp and API
           echo "Applying the webapp-api-ingress.yaml"
           kubectl apply -f k8s/webapp-api-ingress.yaml
+
 
       # Step 8: Get the Ingress URL (for later use in build)
       - name: Get Ingress URL
