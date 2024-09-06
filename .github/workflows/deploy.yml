@@ -95,7 +95,9 @@ jobs:
             --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
             --build-arg NEXT_PUBLIC_API_URL="${{ env.INGRESS_URL }}/api" \
             --build-arg NEXT_PUBLIC_WEBAPP_URL="${{ env.INGRESS_URL }}" \
-            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} -f ./webapp/Dockerfile ./webapp
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest \
+            -f ./webapp/Dockerfile ./webapp
 
           docker build \
             --no-cache \
@@ -108,7 +110,9 @@ jobs:
             --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
             --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
             --build-arg NEXT_PUBLIC_API_URL="${{ env.INGRESS_URL }}/api" \
-            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} -f ./api/Dockerfile ./api
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest \
+            -f ./api/Dockerfile ./api
     
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
