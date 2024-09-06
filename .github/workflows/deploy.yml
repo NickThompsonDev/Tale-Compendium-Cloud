@@ -36,13 +36,13 @@ jobs:
         run: |
           gcloud auth configure-docker
 
-      # Step 6: Install or Upgrade NGINX Ingress controller using Helm
+
+      # Step 5: Install or Upgrade NGINX Ingress controller using Helm
       - name: Install or Upgrade NGINX Ingress Controller with Helm
         run: |
           helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
           helm repo update
           
-          # Check if the release already exists, and if so, upgrade it
           if helm status nginx-ingress --namespace ingress-nginx; then
             echo "Upgrading existing NGINX Ingress controller..."
             helm upgrade nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx
@@ -51,23 +51,23 @@ jobs:
             helm install nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace
           fi
 
-
-      # Step 6: Apply Kubernetes manifests for custom Ingress resource
-      - name: Apply custom Ingress resource
+      # Step 6: Wait for the NGINX Ingress controller and webhook to be ready
+      - name: Wait for NGINX Ingress Controller
         run: |
           set -e  # Stop script on error
 
-          # Wait for the NGINX Ingress controller and webhook to be ready
+          # Wait for the correct NGINX Ingress controller deployment to be fully ready
           echo "Waiting for NGINX Ingress controller to be fully deployed..."
-          kubectl rollout status deployment nginx-ingress-controller -n ingress-nginx
+          kubectl rollout status deployment nginx-ingress-ingress-nginx-controller -n ingress-nginx
 
           echo "Checking if the admission webhook service is ready..."
           kubectl get svc nginx-ingress-ingress-nginx-controller-admission -n ingress-nginx
 
-          # Apply the ingress resource for webapp and API
+      # Step 7: Apply the custom Ingress resource
+      - name: Apply custom Ingress resource
+        run: |
           echo "Applying the webapp-api-ingress.yaml"
           kubectl apply -f k8s/webapp-api-ingress.yaml
-
 
       # Step 8: Get the Ingress URL (for later use in build)
       - name: Get Ingress URL
@@ -79,8 +79,7 @@ jobs:
           done
           echo "INGRESS_IP=$INGRESS_IP"
           echo "INGRESS_URL=http://$INGRESS_IP" >> $GITHUB_ENV
-
-
+          
       # Step 9: Build and Push Docker Images
       - name: Build and Push Docker Images
         run: |
