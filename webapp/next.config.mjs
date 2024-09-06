@@ -9,7 +9,7 @@ const nextConfig = {
           ? process.env.NEXT_PUBLIC_WEBAPP_URL.split('//')[1]
           : 'localhost', // Fallback to localhost for development
         port: '',
-        pathname: '/storage/**',
+        pathname: '/api/storage/**',
       },
     ],
   },
