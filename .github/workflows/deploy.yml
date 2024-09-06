@@ -114,8 +114,13 @@ jobs:
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest \
             -f ./api/Dockerfile ./api
     
+          # Push both SHA and latest tags for the webapp image
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest
+
+          # Push both SHA and latest tags for the API image
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
 
       # Step 10: Terraform Apply (Image-related Resources)
       - name: Terraform Apply
