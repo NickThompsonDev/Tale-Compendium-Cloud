@@ -214,6 +214,47 @@ resource "kubernetes_deployment" "database" {
   }
 }
 
+# Kubernetes service for webapp
+resource "kubernetes_service" "webapp" {
+  metadata {
+    name = "webapp-service"
+  }
+
+  spec {
+    selector = {
+      app = "webapp"
+    }
+
+    port {
+      port        = 80  # Exposing port 80 for webapp
+      target_port = 3000  # Webapp container port
+    }
+
+    type = "ClusterIP"
+  }
+}
+
+# Kubernetes service for API
+resource "kubernetes_service" "api" {
+  metadata {
+    name = "api-service"
+  }
+
+  spec {
+    selector = {
+      app = "api"
+    }
+
+    port {
+      port        = 5000  # Exposing port 5000 for the API
+      target_port = 5000  # API container port
+    }
+
+    type = "ClusterIP"
+  }
+}
+
+
 resource "kubernetes_service" "database" {
   metadata {
     name = "database-service"

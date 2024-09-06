@@ -36,45 +36,23 @@ jobs:
         run: |
           gcloud auth configure-docker
 
-      # Step 6: Add the Helm repo and Check if Helm release exists, then install or upgrade with custom values.yaml
-      - name: Add Helm repo and Check if Helm release exists
+      # Step 6: Apply Kubernetes manifests
+      - name: Apply Kubernetes manifests
         run: |
           set -e  # Stop script on error
           
-          helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-          helm repo update
+          # Apply the nginx ingress controller from the manifest directory
+          kubectl apply -f manifest/nginx-ingress-controller.yaml
           
-          # Check if the values.yaml file exists
-          if [ ! -f helm/values.yaml ]; then
-            echo "Error: helm/values.yaml file not found!"
-            exit 1
-          fi
-          
-          # Install or Upgrade NGINX Ingress
-          if helm status nginx-ingress -n ingress-nginx; then
-            echo "Upgrading existing nginx-ingress Helm release"
-            helm upgrade nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx -f helm/values.yaml
-          else
-            echo "Installing new nginx-ingress Helm release"
-            helm install nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace -f helm/values.yaml
-          fi
+          # Apply the webapp-api ingress from the k8s directory
+          kubectl apply -f k8s/webapp-api-ingress.yaml
 
-          # Validate the installation/upgrade and check the status of the release
-          echo "Checking Helm release status"
-          if ! helm status nginx-ingress -n ingress-nginx; then
-            echo "Error: Helm release not found or failed to install/upgrade"
-            exit 1
-          fi
-          
-          # Optionally check if the ingress resource was created or updated
+          # Validate the NGINX Ingress controller and check the status of the ingress resource
+          echo "Validating NGINX Ingress controller"
+          kubectl get pods -n ingress-nginx
+
           echo "Validating ingress resource"
-          if ! kubectl get ingress -n ingress-nginx; then
-            echo "Error: Ingress resource not found!"
-            exit 1
-          fi
-          
-          echo "Helm release and ingress resource successfully updated"
-
+          kubectl get ingress -n default
 
 
       # Step 7: Get the Ingress URL (for later use in build)
