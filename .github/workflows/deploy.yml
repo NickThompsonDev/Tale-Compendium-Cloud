@@ -36,22 +36,27 @@ jobs:
         run: |
           gcloud auth configure-docker
 
-      # Step 6: Apply Kubernetes manifests
+      # Step 6: Apply Kubernetes manifests for NGINX Ingress and webapp/api ingress
       - name: Apply Kubernetes manifests
         run: |
           set -e  # Stop script on error
           
-          # Apply the nginx ingress controller from the manifest directory
+          # Step 6.1: Apply the NGINX Ingress controller deployment
           kubectl apply -f manifest/nginx-ingress-controller.yaml
-          
-          # Apply the webapp-api ingress from the k8s directory
+
+          # Step 6.2: Wait for the NGINX Ingress controller to be fully running
+          echo "Waiting for NGINX Ingress controller to be fully deployed..."
+          kubectl rollout status deployment/nginx-ingress-controller -n ingress-nginx
+
+          # Step 6.3: Apply the ingress resource for webapp and API
+          echo "Applying the webapp-api-ingress.yaml"
           kubectl apply -f k8s/webapp-api-ingress.yaml
 
-          # Validate the NGINX Ingress controller and check the status of the ingress resource
-          echo "Validating NGINX Ingress controller"
+          # Step 6.4: Validate the NGINX Ingress and Ingress resources
+          echo "Checking NGINX Ingress controller pods"
           kubectl get pods -n ingress-nginx
 
-          echo "Validating ingress resource"
+          echo "Checking webapp and API Ingress resource"
           kubectl get ingress -n default
 
 

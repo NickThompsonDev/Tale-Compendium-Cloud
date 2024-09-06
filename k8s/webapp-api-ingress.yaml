@@ -3,9 +3,8 @@ kind: Ingress
 metadata:
   name: webapp-api-ingress
   namespace: default
-  annotations:
-    kubernetes.io/ingress.class: nginx
 spec:
+  ingressClassName: nginx
   rules:
     - http:
         paths:
