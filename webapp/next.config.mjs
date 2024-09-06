@@ -4,10 +4,8 @@ const nextConfig = {
     unoptimized: true,
     remotePatterns: [
       {
-        protocol: 'http',
-        hostname: '35.196.90.174',
-        port: '',
-        pathname: '/api/storage/**',
+        protocol: '**',
+        hostname: '**',
       },
     ],
   },
