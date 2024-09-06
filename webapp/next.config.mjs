@@ -1,5 +1,3 @@
-console.log("NEXT_PUBLIC_WEBAPP_URL:", process.env.NEXT_PUBLIC_WEBAPP_URL);
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -7,11 +5,9 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'http',
-        hostname: process.env.NEXT_PUBLIC_WEBAPP_URL
-          ? new URL(process.env.NEXT_PUBLIC_WEBAPP_URL).hostname
-          : 'localhost', // Fallback to 'localhost' for development
+        hostname: '35.196.90.174',
         port: '',
-        pathname: '/api/storage/**', // Update this based on your API route
+        pathname: 'api/storage/**',
       },
     ],
   },
