@@ -31,41 +31,33 @@ jobs:
         run: |
           gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
 
-      # Step 5: Annotate Kubernetes service account to use GCP SA
-      - name: Annotate Kubernetes service account
-        run: |
-          kubectl annotate serviceaccount nginx-ingress-controller \
-            --namespace ingress-nginx \
-            iam.gke.io/gcp-service-account=$(gcloud config get-value account) --overwrite
-
-      # Step 6: Authenticate Docker to GCR
+      # Step 5: Authenticate Docker to GCR
       - name: Authenticate Docker to GCR
         run: |
           gcloud auth configure-docker
 
-      # Step 7: Apply Kubernetes manifests for NGINX Ingress and webapp/api ingress
+      # Step 6: Apply Kubernetes manifests for NGINX Ingress and webapp/api ingress
       - name: Apply Kubernetes manifests
         run: |
           set -e  # Stop script on error
           
-          # Step 6.1: Apply the NGINX Ingress controller deployment
+          # Apply the NGINX Ingress controller deployment
           kubectl apply -f manifest/nginx-ingress-controller.yaml
 
-          # Step 6.2: Wait for the NGINX Ingress controller to be fully running
+          # Wait for the NGINX Ingress controller to be fully running
           echo "Waiting for NGINX Ingress controller to be fully deployed..."
           kubectl rollout status deployment/nginx-ingress-controller -n ingress-nginx
 
-          # Step 6.3: Apply the ingress resource for webapp and API
+          # Apply the ingress resource for webapp and API
           echo "Applying the webapp-api-ingress.yaml"
           kubectl apply -f k8s/webapp-api-ingress.yaml
 
-          # Step 6.4: Validate the NGINX Ingress and Ingress resources
+          # Validate the NGINX Ingress and Ingress resources
           echo "Checking NGINX Ingress controller pods"
           kubectl get pods -n ingress-nginx
 
           echo "Checking webapp and API Ingress resource"
           kubectl get ingress -n default
-
 
 
       # Step 8: Get the Ingress URL (for later use in build)
