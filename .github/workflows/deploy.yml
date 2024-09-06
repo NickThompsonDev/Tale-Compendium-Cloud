@@ -99,6 +99,7 @@ jobs:
           TF_VAR_clerk_webhook_secret: ${{ secrets.CLERK_WEBHOOK_SECRET }}
           TF_VAR_database_host: "database-service.default.svc.cluster.local"
           TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
+          TF_VAR_next_public_api_url: ${{ env.INGRESS_URL }}/api"
           TF_VAR_next_public_webapp_url: ${{ env.INGRESS_URL }}
           TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
@@ -106,3 +107,17 @@ jobs:
         run: |
           terraform init -upgrade
           terraform apply -auto-approve
+
+      - name: Cleanup old Docker images in GCR
+        run: |
+          # Get the current SHA
+          SHA="${{ github.sha }}"
+          PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+          # List all tags in the webapp image and delete those that aren't 'latest' or the current SHA
+          gcloud container images list-tags gcr.io/${PROJECT_ID}/webapp --format='get(digest)' --filter='NOT tags:(${SHA},latest)' | while read digest; do
+            gcloud container images delete gcr.io/${PROJECT_ID}/webapp@$digest --quiet --force-delete-tags
+          done
+          # Repeat the process for the API image
+          gcloud container images list-tags gcr.io/${PROJECT_ID}/api --format='get(digest)' --filter='NOT tags:(${SHA},latest)' | while read digest; do
+            gcloud container images delete gcr.io/${PROJECT_ID}/api@$digest --quiet --force-delete-tags
+          done
