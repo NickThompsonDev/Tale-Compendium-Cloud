@@ -126,7 +126,6 @@ variable "next_public_webapp_url" {
 variable "next_public_api_url" {
   description = "Internal API URL for backend services communication"
   type        = string
-  default     = "api-service.default.svc.cluster.local"
 }
 
 # Database host
