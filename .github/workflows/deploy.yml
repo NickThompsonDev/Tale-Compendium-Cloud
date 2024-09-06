@@ -79,11 +79,12 @@ jobs:
           done
           echo "INGRESS_IP=$INGRESS_IP"
           echo "INGRESS_URL=http://$INGRESS_IP" >> $GITHUB_ENV
-          
+
       # Step 9: Build and Push Docker Images
       - name: Build and Push Docker Images
         run: |
           docker build \
+            --no-cache \
             --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }} \
             --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
             --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }} \
@@ -97,6 +98,7 @@ jobs:
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} -f ./webapp/Dockerfile ./webapp
 
           docker build \
+            --no-cache \
             --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }} \
             --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
             --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }} \
