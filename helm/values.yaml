@@ -1,26 +1,58 @@
 controller:
   service:
     type: LoadBalancer
+    ports:
+      - port: 80
+        targetPort: 80
+      - port: 443
+        targetPort: 443
 
 ingress:
   enabled: true
   annotations:
-    kubernetes.io/ingress.class: nginx
-  paths:
-    # Path for the API service
-    - path: /api
-      pathType: Prefix
-      backend:
-        service:
-          name: api-service
-          port:
-            number: 5000
+    kubernetes.io/ingress.class: "nginx"
+  rules:
+    - http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-service
+                port:
+                  number: 5000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: webapp-service
+                port:
+                  number: 80
 
-    # Path for the Webapp service
-    - path: /
-      pathType: Prefix
-      backend:
-        service:
-          name: webapp-service
-          port:
-            number: 80
+api:
+  service:
+    type: ClusterIP
+    ports:
+      - name: http
+        port: 5000
+        targetPort: 5000
+    selector:
+      app: api-service
+
+webapp:
+  service:
+    type: ClusterIP
+    ports:
+      - name: http
+        port: 80
+        targetPort: 80
+    selector:
+      app: webapp-service
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi

@@ -39,14 +39,42 @@ jobs:
       # Step 6: Add the Helm repo and Check if Helm release exists, then install or upgrade with custom values.yaml
       - name: Add Helm repo and Check if Helm release exists
         run: |
+          set -e  # Stop script on error
+          
           helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
           helm repo update
-
+          
+          # Check if the values.yaml file exists
+          if [ ! -f helm/values.yaml ]; then
+            echo "Error: helm/values.yaml file not found!"
+            exit 1
+          fi
+          
+          # Install or Upgrade NGINX Ingress
           if helm status nginx-ingress -n ingress-nginx; then
+            echo "Upgrading existing nginx-ingress Helm release"
             helm upgrade nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx -f helm/values.yaml
           else
+            echo "Installing new nginx-ingress Helm release"
             helm install nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace -f helm/values.yaml
           fi
+
+          # Validate the installation/upgrade and check the status of the release
+          echo "Checking Helm release status"
+          if ! helm status nginx-ingress -n ingress-nginx; then
+            echo "Error: Helm release not found or failed to install/upgrade"
+            exit 1
+          fi
+          
+          # Optionally check if the ingress resource was created or updated
+          echo "Validating ingress resource"
+          if ! kubectl get ingress -n ingress-nginx; then
+            echo "Error: Ingress resource not found!"
+            exit 1
+          fi
+          
+          echo "Helm release and ingress resource successfully updated"
+
 
 
       # Step 7: Get the Ingress URL (for later use in build)
