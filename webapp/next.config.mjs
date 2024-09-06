@@ -1,3 +1,5 @@
+console.log("NEXT_PUBLIC_WEBAPP_URL:", process.env.NEXT_PUBLIC_WEBAPP_URL);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -9,7 +11,7 @@ const nextConfig = {
           ? new URL(process.env.NEXT_PUBLIC_WEBAPP_URL).hostname
           : 'localhost', // Fallback to 'localhost' for development
         port: '',
-        pathname: '/api/storage/**', // Updated to reflect correct path
+        pathname: '/api/storage/**', // Update this based on your API route
       },
     ],
   },
