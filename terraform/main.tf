@@ -89,6 +89,7 @@ resource "kubernetes_deployment" "webapp" {
   }
 }
 
+# Kubernetes deployment for API
 resource "kubernetes_deployment" "api" {
   metadata {
     name = "api-deployment"
@@ -254,7 +255,7 @@ resource "kubernetes_service" "api" {
   }
 }
 
-
+# Kubernetes service for database
 resource "kubernetes_service" "database" {
   metadata {
     name = "database-service"
@@ -272,4 +273,67 @@ resource "kubernetes_service" "database" {
 
     type = "ClusterIP"
   }
+}
+
+# Create an SSL certificate (if it doesn't already exist)
+resource "google_compute_managed_ssl_certificate" "talecompendium_ssl" {
+  name = "talecompendium-ssl-cert"
+  managed {
+    domains = ["talecompendium.com", "*.talecompendium.com"]
+  }
+}
+
+# Backend services for webapp and API
+resource "google_compute_backend_service" "webapp_backend" {
+  name                  = "webapp-backend"
+  load_balancing_scheme = "EXTERNAL"
+  protocol              = "HTTP"
+  backend {
+    group = google_container_node_pool.default.instance_group_urls[0]
+  }
+}
+
+resource "google_compute_backend_service" "api_backend" {
+  name                  = "api-backend"
+  load_balancing_scheme = "EXTERNAL"
+  protocol              = "HTTP"
+  backend {
+    group = google_container_node_pool.default.instance_group_urls[0]
+  }
+}
+
+# URL Map for routing traffic
+resource "google_compute_url_map" "talecompendium_url_map" {
+  name          = "talecompendium-url-map"
+  default_service = google_compute_backend_service.webapp_backend.id
+
+  host_rule {
+    hosts       = ["talecompendium.com", "*.talecompendium.com"]
+    path_matcher = "allpaths"
+  }
+
+  path_matcher {
+    name            = "allpaths"
+    default_service = google_compute_backend_service.webapp_backend.id
+
+    path_rule {
+      paths   = ["/api/*"]
+      service = google_compute_backend_service.api_backend.id
+    }
+  }
+}
+
+# HTTPS Proxy
+resource "google_compute_target_https_proxy" "https_proxy" {
+  name             = "talecompendium-https-proxy"
+  ssl_certificates = [google_compute_managed_ssl_certificate.talecompendium_ssl.id]
+  url_map          = google_compute_url_map.talecompendium_url_map.id
+}
+
+# Global forwarding rule to handle external requests
+resource "google_compute_global_forwarding_rule" "https_forwarding_rule" {
+  name       = "talecompendium-https-forwarding-rule"
+  target     = google_compute_target_https_proxy.https_proxy.id
+  port_range = "443"
+  load_balancing_scheme = "EXTERNAL"
 }
