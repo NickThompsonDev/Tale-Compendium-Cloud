@@ -36,32 +36,26 @@ jobs:
         run: |
           gcloud auth configure-docker
 
-
-      # Step 5: Install or Upgrade NGINX Ingress controller using Helm
-      - name: Install or Upgrade NGINX Ingress Controller with Helm
+      # Step 6: Check and Import Existing Resources
+      - name: Import Existing Resources
         run: |
-          helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-          helm repo update
-          
-          if helm status nginx-ingress --namespace ingress-nginx; then
-            echo "Upgrading existing NGINX Ingress controller..."
-            helm upgrade nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx
-          else
-            echo "Installing new NGINX Ingress controller..."
-            helm install nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace
-          fi
+          # Import webapp-deployment if it exists
+          kubectl get deployment webapp-deployment -n default && terraform import kubernetes_deployment.webapp default/webapp-deployment || echo "webapp-deployment does not exist, skipping import"
 
-      # Step 6: Wait for the NGINX Ingress controller and webhook to be ready
-      - name: Wait for NGINX Ingress Controller
-        run: |
-          set -e  # Stop script on error
+          # Import api-deployment if it exists
+          kubectl get deployment api-deployment -n default && terraform import kubernetes_deployment.api default/api-deployment || echo "api-deployment does not exist, skipping import"
 
-          # Wait for the correct NGINX Ingress controller deployment to be fully ready
-          echo "Waiting for NGINX Ingress controller to be fully deployed..."
-          kubectl rollout status deployment nginx-ingress-ingress-nginx-controller -n ingress-nginx
+          # Import database-deployment if it exists
+          kubectl get deployment database-deployment -n default && terraform import kubernetes_deployment.database default/database-deployment || echo "database-deployment does not exist, skipping import"
 
-          echo "Checking if the admission webhook service is ready..."
-          kubectl get svc nginx-ingress-ingress-nginx-controller-admission -n ingress-nginx
+          # Import webapp-service if it exists
+          kubectl get service webapp-service -n default && terraform import kubernetes_service.webapp default/webapp-service || echo "webapp-service does not exist, skipping import"
+
+          # Import api-service if it exists
+          kubectl get service api-service -n default && terraform import kubernetes_service.api default/api-service || echo "api-service does not exist, skipping import"
+
+          # Import database-service if it exists
+          kubectl get service database-service -n default && terraform import kubernetes_service.database default/database-service || echo "database-service does not exist, skipping import"
 
       # Step 7: Apply the custom Ingress resource
       - name: Apply custom Ingress resource
@@ -69,8 +63,7 @@ jobs:
           echo "Applying the webapp-api-ingress.yaml"
           kubectl apply -f k8s/webapp-api-ingress.yaml
 
-
-      # Step 9: Build and Push Docker Images
+      # Step 8: Build and Push Docker Images
       - name: Build and Push Docker Images
         run: |
           docker build \
@@ -113,7 +106,7 @@ jobs:
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
 
-      # Step 10: Terraform Apply (Image-related Resources)
+      # Step 9: Terraform Apply (Image-related Resources)
       - name: Terraform Apply
         working-directory: terraform
         env:
@@ -134,17 +127,3 @@ jobs:
         run: |
           terraform init -upgrade
           terraform apply -auto-approve
-
-      - name: Cleanup old Docker images in GCR
-        run: |
-          # Get the current SHA
-          SHA="${{ github.sha }}"
-          PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
-          # List all tags in the webapp image and delete those that aren't 'latest' or the current SHA
-          gcloud container images list-tags gcr.io/${PROJECT_ID}/webapp --format='get(digest)' --filter='NOT tags:(${SHA},latest)' | while read digest; do
-            gcloud container images delete gcr.io/${PROJECT_ID}/webapp@$digest --quiet --force-delete-tags
-          done
-          # Repeat the process for the API image
-          gcloud container images list-tags gcr.io/${PROJECT_ID}/api --format='get(digest)' --filter='NOT tags:(${SHA},latest)' | while read digest; do
-            gcloud container images delete gcr.io/${PROJECT_ID}/api@$digest --quiet --force-delete-tags
-          done
