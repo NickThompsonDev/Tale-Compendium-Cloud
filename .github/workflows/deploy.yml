@@ -36,34 +36,13 @@ jobs:
         run: |
           gcloud auth configure-docker
 
-      # Step 6: Check and Import Existing Resources
-      - name: Import Existing Resources
-        run: |
-          # Import webapp-deployment if it exists
-          kubectl get deployment webapp-deployment -n default && terraform import kubernetes_deployment.webapp default/webapp-deployment || echo "webapp-deployment does not exist, skipping import"
-
-          # Import api-deployment if it exists
-          kubectl get deployment api-deployment -n default && terraform import kubernetes_deployment.api default/api-deployment || echo "api-deployment does not exist, skipping import"
-
-          # Import database-deployment if it exists
-          kubectl get deployment database-deployment -n default && terraform import kubernetes_deployment.database default/database-deployment || echo "database-deployment does not exist, skipping import"
-
-          # Import webapp-service if it exists
-          kubectl get service webapp-service -n default && terraform import kubernetes_service.webapp default/webapp-service || echo "webapp-service does not exist, skipping import"
-
-          # Import api-service if it exists
-          kubectl get service api-service -n default && terraform import kubernetes_service.api default/api-service || echo "api-service does not exist, skipping import"
-
-          # Import database-service if it exists
-          kubectl get service database-service -n default && terraform import kubernetes_service.database default/database-service || echo "database-service does not exist, skipping import"
-
-      # Step 7: Apply the custom Ingress resource
+      # Step 6: Apply the custom Ingress resource
       - name: Apply custom Ingress resource
         run: |
           echo "Applying the webapp-api-ingress.yaml"
           kubectl apply -f k8s/webapp-api-ingress.yaml
 
-      # Step 8: Build and Push Docker Images
+      # Step 7: Build and Push Docker Images
       - name: Build and Push Docker Images
         run: |
           docker build \
@@ -106,6 +85,38 @@ jobs:
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
 
+      # Step 8: Import existing resources before Terraform apply
+      - name: Import webapp deployment
+        working-directory: terraform
+        run: |
+          terraform import kubernetes_deployment.webapp default/webapp-deployment || echo "webapp-deployment does not exist, skipping import"
+
+      - name: Import api deployment
+        working-directory: terraform
+        run: |
+          terraform import kubernetes_deployment.api default/api-deployment || echo "api-deployment does not exist, skipping import"
+
+      - name: Import database deployment
+        working-directory: terraform
+        run: |
+          terraform import kubernetes_deployment.database default/database-deployment || echo "database-deployment does not exist, skipping import"
+
+      - name: Import webapp service
+        working-directory: terraform
+        run: |
+          terraform import kubernetes_service.webapp default/webapp-service || echo "webapp-service does not exist, skipping import"
+
+      - name: Import api service
+        working-directory: terraform
+        run: |
+          terraform import kubernetes_service.api default/api-service || echo "api-service does not exist, skipping import"
+
+      - name: Import database service
+        working-directory: terraform
+        run: |
+          terraform import kubernetes_service.database default/database-service || echo "database-service does not exist, skipping import"
+
+
       # Step 9: Terraform Apply (Image-related Resources)
       - name: Terraform Apply
         working-directory: terraform
@@ -127,3 +138,18 @@ jobs:
         run: |
           terraform init -upgrade
           terraform apply -auto-approve
+
+      # Step 10: Clean up old images.
+      - name: Cleanup old Docker images in GCR
+        run: |
+          # Get the current SHA
+          SHA="${{ github.sha }}"
+          PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+          # List all tags in the webapp image and delete those that aren't 'latest' or the current SHA
+          gcloud container images list-tags gcr.io/${PROJECT_ID}/webapp --format='get(digest)' --filter='NOT tags:(${SHA},latest)' | while read digest; do
+            gcloud container images delete gcr.io/${PROJECT_ID}/webapp@$digest --quiet --force-delete-tags
+          done
+          # Repeat the process for the API image
+          gcloud container images list-tags gcr.io/${PROJECT_ID}/api --format='get(digest)' --filter='NOT tags:(${SHA},latest)' | while read digest; do
+            gcloud container images delete gcr.io/${PROJECT_ID}/api@$digest --quiet --force-delete-tags
+          done
