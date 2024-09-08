@@ -3,10 +3,14 @@ kind: Ingress
 metadata:
   name: webapp-api-ingress
   namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    kubernetes.io/ingress.global-static-ip-name: webapp-ingress-ip
 spec:
   ingressClassName: nginx
   rules:
-    - http:
+    - host: cloud.talecompendium.com
+      http:
         paths:
           - path: /api
             pathType: Prefix

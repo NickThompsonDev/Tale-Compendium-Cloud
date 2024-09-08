@@ -68,12 +68,12 @@ resource "kubernetes_deployment" "webapp" {
             value = var.openai_api_key
           }
           env {
-            name  = "NEXT_PUBLIC_WEBAPP_URL"
-            value = var.next_public_webapp_url
+            name  = "NEXT_PUBLIC_API_URL"
+            value = "https://cloud.talecompendium.com/api"
           }
           env {
-            name  = "NEXT_PUBLIC_API_URL"
-            value = var.next_public_api_url
+            name  = "NEXT_PUBLIC_WEBAPP_URL"
+            value = "https://cloud.talecompendium.com"
           }
           env {
             name  = "NEXT_PUBLIC_CLERK_SIGN_IN_URL"
@@ -151,11 +151,11 @@ resource "kubernetes_deployment" "api" {
           }
           env {
             name  = "NEXT_PUBLIC_API_URL"
-            value = var.next_public_api_url
+            value = "https://cloud.talecompendium.com/api"
           }
           env {
             name  = "NEXT_PUBLIC_WEBAPP_URL"
-            value = var.next_public_webapp_url
+            value = "https://cloud.talecompendium.com"
           }
         }
       }
