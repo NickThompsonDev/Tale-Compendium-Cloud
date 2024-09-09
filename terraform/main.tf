@@ -14,21 +14,36 @@ provider "helm" {
   }
 }
 
-# 1. Install Cert-Manager using Helm
+# 1. Install Cert-Manager using Helm if not already installed
 resource "helm_release" "cert_manager" {
   name       = "cert-manager"
   repository = "https://charts.jetstack.io"
   chart      = "cert-manager"
   namespace  = "cert-manager"
 
+  # Ensure CRDs are installed
   set {
     name  = "installCRDs"
     value = "true"
   }
+
+  # Wait until cert-manager is deployed successfully
+  timeout = 600
+
+  depends_on = [kubernetes_namespace.cert_manager_ns]
 }
 
-# 2. Create Let's Encrypt ClusterIssuer
+# Namespace for cert-manager
+resource "kubernetes_namespace" "cert_manager_ns" {
+  metadata {
+    name = "cert-manager"
+  }
+}
+
+# 2. Create Let's Encrypt ClusterIssuer using Kubernetes Manifest
 resource "kubernetes_manifest" "letsencrypt_prod" {
+  depends_on = [helm_release.cert_manager]
+
   manifest = {
     apiVersion = "cert-manager.io/v1"
     kind       = "ClusterIssuer"
@@ -38,7 +53,7 @@ resource "kubernetes_manifest" "letsencrypt_prod" {
     spec = {
       acme = {
         server                  = "https://acme-v02.api.letsencrypt.org/directory"
-        email                   = "nickbdt86@gmail.com"  # Your email
+        email                   = "nickbdt86@gmail.com"
         privateKeySecretRef = {
           name = "letsencrypt-prod"
         }
@@ -56,6 +71,8 @@ resource "kubernetes_manifest" "letsencrypt_prod" {
 
 # 3. Create the Certificate using Cert-Manager for the domain cloud.talecompendium.com
 resource "kubernetes_manifest" "tls_certificate" {
+  depends_on = [kubernetes_manifest.letsencrypt_prod]
+
   manifest = {
     apiVersion = "cert-manager.io/v1"
     kind       = "Certificate"
@@ -66,7 +83,7 @@ resource "kubernetes_manifest" "tls_certificate" {
     spec = {
       secretName = "webapp-tls-secret"  # Cert-Manager will create this secret
       issuerRef = {
-        name = "letsencrypt-prod"  # Hardcoded or direct reference to issuer
+        name = "letsencrypt-prod"
         kind = "ClusterIssuer"
       }
       commonName = "cloud.talecompendium.com"
@@ -77,19 +94,17 @@ resource "kubernetes_manifest" "tls_certificate" {
 
 # 4. Create the Ingress Resource
 resource "kubernetes_ingress" "webapp_ingress" {
+  depends_on = [kubernetes_manifest.tls_certificate]
+
   metadata {
     name = "webapp-ingress"
     annotations = {
-      "cert-manager.io/cluster-issuer"            = "letsencrypt-prod"
-      "kubernetes.io/ingress.class"               = "nginx"
-      "nginx.ingress.kubernetes.io/rewrite-target" = "/"
-      "kubernetes.io/ingress.global-static-ip-name" = "webapp-ingress-ip"
+      "cert-manager.io/cluster-issuer" = "letsencrypt-prod"
+      "kubernetes.io/ingress.class"    = "nginx"
     }
   }
 
   spec {
-    ingress_class_name = "nginx"
-    
     tls {
       hosts       = ["cloud.talecompendium.com"]
       secret_name = "webapp-tls-secret"  # Reference the generated TLS secret
@@ -99,18 +114,9 @@ resource "kubernetes_ingress" "webapp_ingress" {
       host = "cloud.talecompendium.com"
       http {
         path {
-          path     = "/"
           backend {
             service_name = "webapp-service"
             service_port = 80
-          }
-        }
-
-        path {
-          path     = "/api"
-          backend {
-            service_name = "api-service"
-            service_port = 5000
           }
         }
       }
