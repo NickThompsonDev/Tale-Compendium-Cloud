@@ -61,55 +61,59 @@ resource "kubernetes_manifest" "tls_certificate" {
 }
 
 # 3. Create the Ingress Resource
-resource "kubernetes_ingress" "webapp_ingress" {
-  metadata {
-    name      = "webapp-ingress"
-    namespace = "default"
-    annotations = {
-      "kubernetes.io/ingress.class"        = "nginx"
-      "nginx.ingress.kubernetes.io/ssl-redirect" = "true"
-      "cert-manager.io/cluster-issuer"     = "letsencrypt-prod"
-    }
-  }
-
-  spec {
-    tls {
-      hosts       = ["cloud.talecompendium.com"]
-      secret_name = "webapp-tls-secret"
-    }
-
-    rule {
-      host = "cloud.talecompendium.com"
-      http {
-        path {
-          path     = "/"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = "webapp-service"
-              port {
-                number = 80
-              }
-            }
-          }
-        }
-
-        path {
-          path     = "/api"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = "api-service"
-              port {
-                number = 5000
-              }
-            }
-          }
-        }
+resource "kubernetes_manifest" "webapp_ingress" {
+  manifest = {
+    "apiVersion" = "networking.k8s.io/v1"
+    "kind"       = "Ingress"
+    "metadata" = {
+      "name"      = "webapp-ingress"
+      "namespace" = "default"
+      "annotations" = {
+        "kubernetes.io/ingress.class"        = "nginx"
+        "nginx.ingress.kubernetes.io/ssl-redirect" = "true"
+        "cert-manager.io/cluster-issuer"     = "letsencrypt-prod"
       }
+    }
+    "spec" = {
+      "tls" = [{
+        "hosts"       = ["cloud.talecompendium.com"]
+        "secretName"  = "webapp-tls-secret"
+      }]
+      "rules" = [{
+        "host" = "cloud.talecompendium.com"
+        "http" = {
+          "paths" = [
+            {
+              "path"     = "/"
+              "pathType" = "Prefix"
+              "backend"  = {
+                "service" = {
+                  "name" = "webapp-service"
+                  "port" = {
+                    "number" = 80
+                  }
+                }
+              }
+            },
+            {
+              "path"     = "/api"
+              "pathType" = "Prefix"
+              "backend"  = {
+                "service" = {
+                  "name" = "api-service"
+                  "port" = {
+                    "number" = 5000
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }]
     }
   }
 }
+
 
 # Kubernetes deployment for webapp
 resource "kubernetes_deployment" "webapp" {
