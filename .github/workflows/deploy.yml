@@ -4,7 +4,12 @@ on:
   push:
     branches:
       - main
-
+    paths:
+      - 'terraform/**'
+      - 'api/**'
+      - 'webapp/**'
+      - 'database/**'
+  
 jobs:
   deploy-gke:
     runs-on: ubuntu-latest
@@ -52,8 +57,32 @@ jobs:
         run: |
           gcloud auth configure-docker
 
-      # Step 6: Build and Push Docker Images
-      - name: Build and Push Docker Images
+      # Step 6: Build and Push Docker Images for API only if files in the API directory have changed
+      - name: Build and Push API Docker Image
+        if: github.event_name == 'push' && (contains(github.event.head_commit.message, 'api/') || contains(github.event.commits[0].modified, 'api/'))
+        run: |
+          docker build \
+            --no-cache \
+            --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }} \
+            --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
+            --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }} \
+            --build-arg CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} \
+            --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+            --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
+            --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
+            --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
+            --build-arg NEXT_PUBLIC_API_URL="https://cloud.talecompendium.com/api" \
+            --build-arg NEXT_PUBLIC_WEBAPP_URL="https://cloud.talecompendium.com" \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest \
+            -f ./api/Dockerfile ./api
+
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
+
+      # Step 7: Build and Push Webapp Docker Image only if files in the webapp directory have changed
+      - name: Build and Push Webapp Docker Image
+        if: github.event_name == 'push' && (contains(github.event.head_commit.message, 'webapp/') || contains(github.event.commits[0].modified, 'webapp/'))
         run: |
           docker build \
             --no-cache \
@@ -71,29 +100,8 @@ jobs:
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest \
             -f ./webapp/Dockerfile ./webapp
 
-          docker build \
-            --no-cache \
-            --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }} \
-            --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
-            --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }} \
-            --build-arg CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} \
-            --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
-            --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
-            --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
-            --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
-            --build-arg NEXT_PUBLIC_API_URL="https://cloud.talecompendium.com/api" \
-            --build-arg NEXT_PUBLIC_WEBAPP_URL="https://cloud.talecompendium.com" \
-            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} \
-            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest \
-            -f ./api/Dockerfile ./api
-    
-          # Push both SHA and latest tags for the webapp image
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest
-
-          # Push both SHA and latest tags for the API image
-          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
-          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
 
 
       # Step 7 Initialize Terraform and update lock file
@@ -138,23 +146,33 @@ jobs:
         run: |
           terraform import kubernetes_manifest.webapp_ingress default/webapp-ingress || echo "webapp-ingress does not exist, skipping import"
 
+      - name: Import SSL certificate
+        working-directory: terraform
+        run: |
+          terraform import google_compute_managed_ssl_certificate.webapp_cert webapp-managed-cert || echo "webapp-managed-cert does not exist, skipping import"
+
       # Step 9: Terraform Apply (Image-related Resources)
       - name: Terraform Apply
         working-directory: terraform
         run: |
           terraform apply -auto-approve
 
-      # Step 10: Clean up old images.
-      - name: Cleanup old Docker images in GCR
+      # Step 10: Conditional Cleanup of old Docker images
+      - name: Cleanup old Docker images in GCR (for webapp)
+        if: github.event_name == 'push' && (contains(github.event.head_commit.message, 'webapp/') || contains(github.event.commits[0].modified, 'webapp/'))
         run: |
-          # Get the current SHA
-          SHA="${{ github.sha }}"
           PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
-          # List all tags in the webapp image and delete those that aren't 'latest' or the current SHA
-          gcloud container images list-tags gcr.io/${PROJECT_ID}/webapp --format='get(digest)' --filter='NOT tags:(${SHA},latest)' | while read digest; do
+          # List all tags in the webapp image and delete those that aren't 'latest'
+          gcloud container images list-tags gcr.io/${PROJECT_ID}/webapp --format='get(digest)' --filter='NOT tags:(latest)' | while read digest; do
             gcloud container images delete gcr.io/${PROJECT_ID}/webapp@$digest --quiet --force-delete-tags
           done
-          # Repeat the process for the API image
-          gcloud container images list-tags gcr.io/${PROJECT_ID}/api --format='get(digest)' --filter='NOT tags:(${SHA},latest)' | while read digest; do
+
+      - name: Cleanup old Docker images in GCR (for api)
+        if: github.event_name == 'push' && (contains(github.event.head_commit.message, 'api/') || contains(github.event.commits[0].modified, 'api/'))
+        run: |
+          PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+          # List all tags in the api image and delete those that aren't 'latest'
+          gcloud container images list-tags gcr.io/${PROJECT_ID}/api --format='get(digest)' --filter='NOT tags:(latest)' | while read digest; do
             gcloud container images delete gcr.io/${PROJECT_ID}/api@$digest --quiet --force-delete-tags
           done
+
