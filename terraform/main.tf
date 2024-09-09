@@ -71,36 +71,45 @@ resource "kubernetes_ingress" "webapp_ingress" {
       "cert-manager.io/cluster-issuer"     = "letsencrypt-prod"
     }
   }
+
   spec {
     tls {
-      hosts = ["cloud.talecompendium.com"]
+      hosts       = ["cloud.talecompendium.com"]
       secret_name = "webapp-tls-secret"
     }
+
     rule {
       host = "cloud.talecompendium.com"
       http {
         path {
           path     = "/"
-
+          path_type = "Prefix"
           backend {
-            service_name = "webapp-service"
-            service_port = 80
+            service {
+              name = "webapp-service"
+              port {
+                number = 80
+              }
+            }
           }
         }
 
         path {
           path     = "/api"
+          path_type = "Prefix"
           backend {
-            service_name = "api-service"
-            service_port = 5000
+            service {
+              name = "api-service"
+              port {
+                number = 5000
+              }
+            }
           }
         }
       }
     }
   }
 }
-
-
 
 # Kubernetes deployment for webapp
 resource "kubernetes_deployment" "webapp" {
