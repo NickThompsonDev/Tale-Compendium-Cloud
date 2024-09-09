@@ -281,57 +281,6 @@ resource "kubernetes_deployment" "api" {
   }
 }
 
-# Kubernetes deployment for database
-resource "kubernetes_deployment" "database" {
-  metadata {
-    name = "database-deployment"
-  }
-
-  spec {
-    replicas = 1
-
-    selector {
-      match_labels = {
-        app = "database"
-      }
-    }
-
-    template {
-      metadata {
-        labels = {
-          app = "database"
-        }
-      }
-
-      spec {
-        container {
-          name  = "database"
-          image = "postgres:14"
-
-          env {
-            name  = "POSTGRES_DB"
-            value = var.database_name
-          }
-
-          env {
-            name  = "POSTGRES_USER"
-            value = var.database_user
-          }
-
-          env {
-            name  = "POSTGRES_PASSWORD"
-            value = var.database_password
-          }
-
-          port {
-            container_port = 5432
-          }
-        }
-      }
-    }
-  }
-}
-
 # Kubernetes service for webapp
 resource "kubernetes_service" "webapp" {
   metadata {
