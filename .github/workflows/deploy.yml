@@ -144,13 +144,13 @@ jobs:
       - name: Import nginx-ingress Helm release
         working-directory: terraform
         run: |
-          terraform import helm_release.nginx_ingress default || echo "nginx-ingress does not exist, skipping import"
+          terraform import helm_release.nginx_ingress ingress-nginx/nginx-ingress || echo "nginx-ingress does not exist, skipping import"
 
       - name: Import webapp-ingress resource
         working-directory: terraform
         run: |
-          terraform import kubernetes_manifest.webapp_ingress 'networking.k8s.io/v1,Ingress,default/webapp-ingress' || echo "webapp-ingress does not exist, skipping import"
-  
+          terraform import kubernetes_manifest.webapp_ingress apiVersion=networking.k8s.io/v1,kind=Ingress,namespace=default,name=webapp-ingress || echo "webapp-ingress does not exist, skipping import"
+
       - name: Import SSL certificate
         working-directory: terraform
         run: |
