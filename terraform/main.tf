@@ -8,6 +8,12 @@ provider "kubernetes" {
   config_path = "~/.kube/config"
 }
 
+provider "helm" {
+  kubernetes {
+    config_path = "~/.kube/config"
+  }
+}
+
 # 1. Create the Google-managed SSL Certificate
 resource "google_compute_managed_ssl_certificate" "webapp_cert" {
   name = "webapp-managed-cert"
@@ -16,7 +22,36 @@ resource "google_compute_managed_ssl_certificate" "webapp_cert" {
   }
 }
 
-# 2. Create the Ingress Resource Using Manifest
+# 2. Install NGINX Ingress Controller with Helm
+resource "helm_release" "nginx_ingress" {
+  name       = "nginx-ingress"
+  repository = "https://kubernetes.github.io/ingress-nginx"
+  chart      = "ingress-nginx"
+  namespace  = "ingress-nginx"
+  create_namespace = true
+
+  set {
+    name  = "controller.service.type"
+    value = "LoadBalancer"
+  }
+
+  set {
+    name  = "controller.admissionWebhooks.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "controller.service.externalTrafficPolicy"
+    value = "Local"
+  }
+
+  set {
+    name  = "controller.metrics.enabled"
+    value = "true"
+  }
+}
+
+# 3. Create the Ingress Resource Using Manifest
 resource "kubernetes_manifest" "webapp_ingress" {
   manifest = {
     "apiVersion" = "networking.k8s.io/v1"
@@ -25,7 +60,7 @@ resource "kubernetes_manifest" "webapp_ingress" {
       "name"      = "webapp-ingress"
       "namespace" = "default"
       "annotations" = {
-        "kubernetes.io/ingress.class"        = "gce"
+        "kubernetes.io/ingress.class"        = "nginx"  # Use nginx instead of gce
         "networking.gke.io/managed-certificates" = google_compute_managed_ssl_certificate.webapp_cert.name
       }
     }
@@ -61,13 +96,10 @@ resource "kubernetes_manifest" "webapp_ingress" {
           ]
         }
       }]
-      "tls" = [{
-        "hosts" = ["cloud.talecompendium.com"]
-        "secretName" = "webapp-tls"
-      }]
     }
   }
 }
+
 
 
 # Kubernetes deployment for webapp
