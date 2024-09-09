@@ -8,19 +8,6 @@ provider "kubernetes" {
   config_path = "~/.kube/config"
 }
 
-# Removed Helm provider as cert-manager was installed manually
-
-# Namespace for cert-manager (handle if it already exists)
-resource "kubernetes_namespace" "cert_manager_ns" {
-  metadata {
-    name = "cert-manager"
-  }
-
-  lifecycle {
-    ignore_changes = [metadata]
-  }
-}
-
 # 1. Let's Encrypt ClusterIssuer
 resource "kubernetes_manifest" "letsencrypt_prod" {
   manifest = {
