@@ -88,7 +88,7 @@ resource "kubernetes_manifest" "webapp_ingress" {
                 "service" = {
                   "name" = "webapp-service"
                   "port" = {
-                    "number" = 80
+                    "number" = 3000
                   }
                 }
               }
