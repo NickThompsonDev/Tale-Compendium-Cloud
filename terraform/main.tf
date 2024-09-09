@@ -11,25 +11,27 @@ provider "kubernetes" {
 # 1. Let's Encrypt ClusterIssuer (assume cert-manager and CRDs are already installed)
 resource "kubernetes_manifest" "letsencrypt_prod" {
   manifest = {
-    apiVersion = "cert-manager.io/v1"
-    kind       = "ClusterIssuer"
-    metadata = {
-      name = "letsencrypt-prod"
+    "apiVersion" = "cert-manager.io/v1"
+    "kind"       = "ClusterIssuer"
+    "metadata" = {
+      "name" = "letsencrypt-prod"
     }
-    spec = {
-      acme = {
-        server                  = "https://acme-v02.api.letsencrypt.org/directory"
-        email                   = "nickbdt86@gmail.com"
-        privateKeySecretRef = {
-          name = "letsencrypt-prod"
+    "spec" = {
+      "acme" = {
+        "email"  = "nickbdt86@gmail.com"
+        "server" = "https://acme-v02.api.letsencrypt.org/directory"
+        "privateKeySecretRef" = {
+          "name" = "letsencrypt-prod"
         }
-        solvers = [{
-          http01 = {
-            ingress = {
-              class = "nginx"
+        "solvers" = [
+          {
+            "http01" = {
+              "ingress" = {
+                "class" = "nginx"
+              }
             }
           }
-        }]
+        ]
       }
     }
   }
@@ -38,55 +40,67 @@ resource "kubernetes_manifest" "letsencrypt_prod" {
 # 2. Create the Certificate for cloud.talecompendium.com
 resource "kubernetes_manifest" "tls_certificate" {
   manifest = {
-    apiVersion = "cert-manager.io/v1"
-    kind       = "Certificate"
-    metadata = {
-      name      = "webapp-tls"
-      namespace = "default"
+    "apiVersion" = "cert-manager.io/v1"
+    "kind"       = "Certificate"
+    "metadata" = {
+      "name"      = "webapp-tls"
+      "namespace" = "default"
     }
-    spec = {
-      secretName = "webapp-tls-secret"  # Cert-Manager will create this secret
-      issuerRef = {
-        name = "letsencrypt-prod"
-        kind = "ClusterIssuer"
+    "spec" = {
+      "secretName" = "webapp-tls-secret"
+      "issuerRef" = {
+        "name" = "letsencrypt-prod"
+        "kind" = "ClusterIssuer"
       }
-      commonName = "cloud.talecompendium.com"
-      dnsNames   = ["cloud.talecompendium.com"]
+      "commonName" = "cloud.talecompendium.com"
+      "dnsNames" = [
+        "cloud.talecompendium.com"
+      ]
     }
   }
 }
 
 # 3. Create the Ingress Resource
 resource "kubernetes_ingress" "webapp_ingress" {
-  depends_on = [kubernetes_manifest.tls_certificate]
-
   metadata {
-    name = "webapp-ingress"
+    name      = "webapp-ingress"
+    namespace = "default"
     annotations = {
-      "cert-manager.io/cluster-issuer" = "letsencrypt-prod"
-      "kubernetes.io/ingress.class"    = "nginx"
+      "kubernetes.io/ingress.class"        = "nginx"
+      "nginx.ingress.kubernetes.io/ssl-redirect" = "true"
+      "cert-manager.io/cluster-issuer"     = "letsencrypt-prod"
     }
   }
-
   spec {
     tls {
-      hosts       = ["cloud.talecompendium.com"]
-      secret_name = "webapp-tls-secret"  # Reference the generated TLS secret
+      hosts = ["cloud.talecompendium.com"]
+      secret_name = "webapp-tls-secret"
     }
-
     rule {
       host = "cloud.talecompendium.com"
       http {
         path {
+          path     = "/"
+
           backend {
             service_name = "webapp-service"
             service_port = 80
+          }
+        }
+
+        path {
+          path     = "/api"
+          backend {
+            service_name = "api-service"
+            service_port = 5000
           }
         }
       }
     }
   }
 }
+
+
 
 # Kubernetes deployment for webapp
 resource "kubernetes_deployment" "webapp" {

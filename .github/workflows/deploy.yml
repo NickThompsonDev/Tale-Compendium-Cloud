@@ -95,6 +95,15 @@ jobs:
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
 
+
+      # Step Delete exisiting resources.
+      - name: Delete existing resources
+        run: |
+          kubectl delete ingress webapp-ingress -n default --ignore-not-found
+          kubectl delete certificate webapp-tls -n default --ignore-not-found
+          kubectl delete clusterissuer letsencrypt-prod --ignore-not-found
+
+
       # Step 7 Initialize Terraform and update lock file
       - name: Terraform Init
         working-directory: terraform
@@ -131,21 +140,6 @@ jobs:
         working-directory: terraform
         run: |
           terraform import kubernetes_service.database default/database-service || echo "database-service does not exist, skipping import"
-
-      - name: Import ingress resource
-        working-directory: terraform
-        run: |
-          terraform import kubernetes_ingress.webapp_ingress default/webapp-ingress || echo "webapp-ingress does not exist, skipping import"
-
-      - name: Import TLS certificate resource
-        working-directory: terraform
-        run: |
-          terraform import kubernetes_manifest.tls_certificate cert-manager.io/v1/Certificate/default/webapp-tls || echo "webapp-tls certificate does not exist, skipping import"
-
-      - name: Import ClusterIssuer resource
-        working-directory: terraform
-        run: |
-          terraform import kubernetes_manifest.letsencrypt_prod cert-manager.io/v1/ClusterIssuer/letsencrypt-prod || echo "letsencrypt-prod ClusterIssuer does not exist, skipping import"
 
 
       # Step 9: Terraform Apply (Image-related Resources)
