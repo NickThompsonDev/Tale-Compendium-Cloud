@@ -66,7 +66,7 @@ resource "kubernetes_manifest" "tls_certificate" {
     spec = {
       secretName = "webapp-tls-secret"  # Cert-Manager will create this secret
       issuerRef = {
-        name = kubernetes_manifest.letsencrypt_prod.metadata[0].name
+        name = "letsencrypt-prod"  # Hardcoded or direct reference to issuer
         kind = "ClusterIssuer"
       }
       commonName = "cloud.talecompendium.com"
