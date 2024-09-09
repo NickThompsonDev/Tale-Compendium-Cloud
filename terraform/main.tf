@@ -8,59 +8,15 @@ provider "kubernetes" {
   config_path = "~/.kube/config"
 }
 
-# 1. Let's Encrypt ClusterIssuer (assume cert-manager and CRDs are already installed)
-resource "kubernetes_manifest" "letsencrypt_prod" {
-  manifest = {
-    "apiVersion" = "cert-manager.io/v1"
-    "kind"       = "ClusterIssuer"
-    "metadata" = {
-      "name" = "letsencrypt-prod"
-    }
-    "spec" = {
-      "acme" = {
-        "email"  = "nickbdt86@gmail.com"
-        "server" = "https://acme-v02.api.letsencrypt.org/directory"
-        "privateKeySecretRef" = {
-          "name" = "letsencrypt-prod"
-        }
-        "solvers" = [
-          {
-            "http01" = {
-              "ingress" = {
-                "class" = "nginx"
-              }
-            }
-          }
-        ]
-      }
-    }
+# 1. Create the Google-managed SSL Certificate
+resource "google_compute_managed_ssl_certificate" "webapp_cert" {
+  name = "webapp-managed-cert"
+  managed {
+    domains = ["cloud.talecompendium.com"]
   }
 }
 
-# 2. Create the Certificate for cloud.talecompendium.com
-resource "kubernetes_manifest" "tls_certificate" {
-  manifest = {
-    "apiVersion" = "cert-manager.io/v1"
-    "kind"       = "Certificate"
-    "metadata" = {
-      "name"      = "webapp-tls"
-      "namespace" = "default"
-    }
-    "spec" = {
-      "secretName" = "webapp-tls-secret"
-      "issuerRef" = {
-        "name" = "letsencrypt-prod"
-        "kind" = "ClusterIssuer"
-      }
-      "commonName" = "cloud.talecompendium.com"
-      "dnsNames" = [
-        "cloud.talecompendium.com"
-      ]
-    }
-  }
-}
-
-# 3. Create the Ingress Resource
+# 2. Create the Ingress Resource Using Manifest
 resource "kubernetes_manifest" "webapp_ingress" {
   manifest = {
     "apiVersion" = "networking.k8s.io/v1"
@@ -69,32 +25,15 @@ resource "kubernetes_manifest" "webapp_ingress" {
       "name"      = "webapp-ingress"
       "namespace" = "default"
       "annotations" = {
-        "kubernetes.io/ingress.class"        = "nginx"
-        "nginx.ingress.kubernetes.io/ssl-redirect" = "true"
-        "cert-manager.io/cluster-issuer"     = "letsencrypt-prod"
+        "kubernetes.io/ingress.class"        = "gce"
+        "networking.gke.io/managed-certificates" = google_compute_managed_ssl_certificate.webapp_cert.name
       }
     }
     "spec" = {
-      "tls" = [{
-        "hosts"       = ["cloud.talecompendium.com"]
-        "secretName"  = "webapp-tls-secret"
-      }]
       "rules" = [{
         "host" = "cloud.talecompendium.com"
         "http" = {
           "paths" = [
-            {
-              "path"     = "/"
-              "pathType" = "Prefix"
-              "backend"  = {
-                "service" = {
-                  "name" = "webapp-service"
-                  "port" = {
-                    "number" = 80
-                  }
-                }
-              }
-            },
             {
               "path"     = "/api"
               "pathType" = "Prefix"
@@ -106,9 +45,25 @@ resource "kubernetes_manifest" "webapp_ingress" {
                   }
                 }
               }
+            },
+            {
+              "path"     = "/"
+              "pathType" = "Prefix"
+              "backend"  = {
+                "service" = {
+                  "name" = "webapp-service"
+                  "port" = {
+                    "number" = 80
+                  }
+                }
+              }
             }
           ]
         }
+      }]
+      "tls" = [{
+        "hosts" = ["cloud.talecompendium.com"]
+        "secretName" = "webapp-tls"
       }]
     }
   }
