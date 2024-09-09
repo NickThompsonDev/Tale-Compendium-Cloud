@@ -4,12 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'terraform/**'
-      - 'api/**'
-      - 'webapp/**'
-      - 'database/**'
-      - '.github/**'
   
 jobs:
   deploy-gke:
@@ -60,7 +54,6 @@ jobs:
 
       # Step 6: Build and Push Docker Images for API only if files in the API directory have changed
       - name: Build and Push API Docker Image
-        if: github.event_name == 'push' && (contains(github.event.head_commit.message, 'api/') || contains(github.event.commits[0].modified, 'api/'))
         run: |
           docker build \
             --no-cache \
@@ -83,7 +76,6 @@ jobs:
 
       # Step 7: Build and Push Webapp Docker Image only if files in the webapp directory have changed
       - name: Build and Push Webapp Docker Image
-        if: github.event_name == 'push' && (contains(github.event.head_commit.message, 'webapp/') || contains(github.event.commits[0].modified, 'webapp/'))
         run: |
           docker build \
             --no-cache \
@@ -164,7 +156,6 @@ jobs:
 
       # Step 10: Conditional Cleanup of old Docker images
       - name: Cleanup old Docker images in GCR (for webapp)
-        if: github.event_name == 'push' && (contains(github.event.head_commit.message, 'webapp/') || contains(github.event.commits[0].modified, 'webapp/'))
         run: |
           PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
           # List all tags in the webapp image and delete those that aren't 'latest'
@@ -173,7 +164,6 @@ jobs:
           done
 
       - name: Cleanup old Docker images in GCR (for api)
-        if: github.event_name == 'push' && (contains(github.event.head_commit.message, 'api/') || contains(github.event.commits[0].modified, 'api/'))
         run: |
           PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
           # List all tags in the api image and delete those that aren't 'latest'
