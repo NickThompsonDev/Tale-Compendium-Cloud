@@ -52,13 +52,7 @@ jobs:
         run: |
           gcloud auth configure-docker
 
-      # Step 6: Apply the custom Ingress resource
-      - name: Apply custom Ingress resource
-        run: |
-          echo "Applying the webapp-api-ingress.yaml"
-          kubectl apply -f k8s/webapp-api-ingress.yaml
-
-      # Step 7: Build and Push Docker Images
+      # Step 6: Build and Push Docker Images
       - name: Build and Push Docker Images
         run: |
           docker build \
@@ -101,12 +95,11 @@ jobs:
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
 
-      # Step 8 Initialize Terraform and update lock file
+      # Step 7 Initialize Terraform and update lock file
       - name: Terraform Init
         working-directory: terraform
         run: |
           terraform init -upgrade
-
 
       # Step 8: Import existing resources before Terraform apply
       - name: Import webapp deployment

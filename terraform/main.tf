@@ -4,15 +4,118 @@ provider "google" {
   region      = var.region
 }
 
-# Use the existing GKE cluster that was created in the setup step
-data "google_container_cluster" "my_cluster" {
-  name     = var.cluster_name
-  location = var.region
-}
-
-# Configure the Kubernetes provider
 provider "kubernetes" {
   config_path = "~/.kube/config"
+}
+
+provider "helm" {
+  kubernetes {
+    config_path = "~/.kube/config"
+  }
+}
+
+# 1. Install Cert-Manager using Helm
+resource "helm_release" "cert_manager" {
+  name       = "cert-manager"
+  repository = "https://charts.jetstack.io"
+  chart      = "cert-manager"
+  namespace  = "cert-manager"
+
+  set {
+    name  = "installCRDs"
+    value = "true"
+  }
+}
+
+# 2. Create Let's Encrypt ClusterIssuer
+resource "kubernetes_manifest" "letsencrypt_prod" {
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "ClusterIssuer"
+    metadata = {
+      name = "letsencrypt-prod"
+    }
+    spec = {
+      acme = {
+        server                  = "https://acme-v02.api.letsencrypt.org/directory"
+        email                   = "nickbdt86@gmail.com"  # Your email
+        privateKeySecretRef = {
+          name = "letsencrypt-prod"
+        }
+        solvers = [{
+          http01 = {
+            ingress = {
+              class = "nginx"
+            }
+          }
+        }]
+      }
+    }
+  }
+}
+
+# 3. Create the Certificate using Cert-Manager for the domain cloud.talecompendium.com
+resource "kubernetes_manifest" "tls_certificate" {
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "Certificate"
+    metadata = {
+      name      = "webapp-tls"
+      namespace = "default"
+    }
+    spec = {
+      secretName = "webapp-tls-secret"  # Cert-Manager will create this secret
+      issuerRef = {
+        name = kubernetes_manifest.letsencrypt_prod.metadata[0].name
+        kind = "ClusterIssuer"
+      }
+      commonName = "cloud.talecompendium.com"
+      dnsNames   = ["cloud.talecompendium.com"]
+    }
+  }
+}
+
+# 4. Create the Ingress Resource
+resource "kubernetes_ingress" "webapp_ingress" {
+  metadata {
+    name = "webapp-ingress"
+    annotations = {
+      "cert-manager.io/cluster-issuer"            = "letsencrypt-prod"
+      "kubernetes.io/ingress.class"               = "nginx"
+      "nginx.ingress.kubernetes.io/rewrite-target" = "/"
+      "kubernetes.io/ingress.global-static-ip-name" = "webapp-ingress-ip"
+    }
+  }
+
+  spec {
+    ingress_class_name = "nginx"
+    
+    tls {
+      hosts       = ["cloud.talecompendium.com"]
+      secret_name = "webapp-tls-secret"  # Reference the generated TLS secret
+    }
+
+    rule {
+      host = "cloud.talecompendium.com"
+      http {
+        path {
+          path     = "/"
+          backend {
+            service_name = "webapp-service"
+            service_port = 80
+          }
+        }
+
+        path {
+          path     = "/api"
+          backend {
+            service_name = "api-service"
+            service_port = 5000
+          }
+        }
+      }
+    }
+  }
 }
 
 # Kubernetes deployment for webapp
@@ -227,8 +330,8 @@ resource "kubernetes_service" "webapp" {
     }
 
     port {
-      port        = 80  # Exposing port 80 for webapp
-      target_port = 3000  # Webapp container port
+      port        = 80
+      target_port = 3000
     }
 
     type = "ClusterIP"
@@ -247,8 +350,8 @@ resource "kubernetes_service" "api" {
     }
 
     port {
-      port        = 5000  # Exposing port 5000 for the API
-      target_port = 5000  # API container port
+      port        = 5000
+      target_port = 5000
     }
 
     type = "ClusterIP"
@@ -273,67 +376,4 @@ resource "kubernetes_service" "database" {
 
     type = "ClusterIP"
   }
-}
-
-# Create an SSL certificate (if it doesn't already exist)
-resource "google_compute_managed_ssl_certificate" "talecompendium_ssl" {
-  name = "talecompendium-ssl-cert"
-  managed {
-    domains = ["talecompendium.com", "*.talecompendium.com"]
-  }
-}
-
-# Backend services for webapp and API
-resource "google_compute_backend_service" "webapp_backend" {
-  name                  = "webapp-backend"
-  load_balancing_scheme = "EXTERNAL"
-  protocol              = "HTTP"
-  backend {
-    group = google_container_node_pool.default.instance_group_urls[0]
-  }
-}
-
-resource "google_compute_backend_service" "api_backend" {
-  name                  = "api-backend"
-  load_balancing_scheme = "EXTERNAL"
-  protocol              = "HTTP"
-  backend {
-    group = google_container_node_pool.default.instance_group_urls[0]
-  }
-}
-
-# URL Map for routing traffic
-resource "google_compute_url_map" "talecompendium_url_map" {
-  name          = "talecompendium-url-map"
-  default_service = google_compute_backend_service.webapp_backend.id
-
-  host_rule {
-    hosts       = ["talecompendium.com", "*.talecompendium.com"]
-    path_matcher = "allpaths"
-  }
-
-  path_matcher {
-    name            = "allpaths"
-    default_service = google_compute_backend_service.webapp_backend.id
-
-    path_rule {
-      paths   = ["/api/*"]
-      service = google_compute_backend_service.api_backend.id
-    }
-  }
-}
-
-# HTTPS Proxy
-resource "google_compute_target_https_proxy" "https_proxy" {
-  name             = "talecompendium-https-proxy"
-  ssl_certificates = [google_compute_managed_ssl_certificate.talecompendium_ssl.id]
-  url_map          = google_compute_url_map.talecompendium_url_map.id
-}
-
-# Global forwarding rule to handle external requests
-resource "google_compute_global_forwarding_rule" "https_forwarding_rule" {
-  name       = "talecompendium-https-forwarding-rule"
-  target     = google_compute_target_https_proxy.https_proxy.id
-  port_range = "443"
-  load_balancing_scheme = "EXTERNAL"
 }
