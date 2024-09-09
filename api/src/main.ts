@@ -10,6 +10,9 @@ async function bootstrap() {
   // SECURITY - https://docs.nestjs.com/security/helmet#helmet
   app.use(helmet());
 
+  // Add a global prefix for API routes
+  app.setGlobalPrefix('api');
+
   // Enable CORS
   app.enableCors({
     origin: process.env.NEXT_PUBLIC_WEBAPP_URL,
@@ -23,6 +26,7 @@ async function bootstrap() {
     .setDescription('API documentation for the Tale Compendium application')
     .setVersion('1.0')
     .addBearerAuth() // Add Bearer token support
+    .setBasePath('/api') // Specify the base path
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
