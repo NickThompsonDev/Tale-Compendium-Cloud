@@ -14,25 +14,6 @@ provider "helm" {
   }
 }
 
-# 1. Install Cert-Manager using Helm if not already installed
-resource "helm_release" "cert_manager" {
-  name       = "cert-manager"
-  repository = "https://charts.jetstack.io"
-  chart      = "cert-manager"
-  namespace  = "cert-manager"
-
-  # Ensure CRDs are installed
-  set {
-    name  = "installCRDs"
-    value = "true"
-  }
-
-  # Wait until cert-manager is deployed successfully
-  timeout = 600
-
-  depends_on = [kubernetes_namespace.cert_manager_ns]
-}
-
 # Namespace for cert-manager
 resource "kubernetes_namespace" "cert_manager_ns" {
   metadata {
@@ -40,9 +21,36 @@ resource "kubernetes_namespace" "cert_manager_ns" {
   }
 }
 
-# 2. Create Let's Encrypt ClusterIssuer using Kubernetes Manifest
-resource "kubernetes_manifest" "letsencrypt_prod" {
+# 1. Install Cert-Manager using Helm with CRDs
+resource "helm_release" "cert_manager" {
+  name       = "cert-manager"
+  repository = "https://charts.jetstack.io"
+  chart      = "cert-manager"
+  namespace  = kubernetes_namespace.cert_manager_ns.metadata[0].name
+
+  set {
+    name  = "installCRDs"
+    value = "true"
+  }
+
+  # Wait until cert-manager is deployed successfully
+  timeout = 600
+}
+
+# 2. Add a null resource to wait for CRDs to be available
+resource "null_resource" "wait_for_crds" {
   depends_on = [helm_release.cert_manager]
+
+  provisioner "local-exec" {
+    command = <<EOT
+      kubectl wait --for=condition=established --timeout=60s crd/clusterissuers.cert-manager.io
+    EOT
+  }
+}
+
+# 3. Create Let's Encrypt ClusterIssuer
+resource "kubernetes_manifest" "letsencrypt_prod" {
+  depends_on = [null_resource.wait_for_crds]
 
   manifest = {
     apiVersion = "cert-manager.io/v1"
@@ -69,7 +77,7 @@ resource "kubernetes_manifest" "letsencrypt_prod" {
   }
 }
 
-# 3. Create the Certificate using Cert-Manager for the domain cloud.talecompendium.com
+# 4. Create the Certificate using Cert-Manager for the domain cloud.talecompendium.com
 resource "kubernetes_manifest" "tls_certificate" {
   depends_on = [kubernetes_manifest.letsencrypt_prod]
 
@@ -92,7 +100,7 @@ resource "kubernetes_manifest" "tls_certificate" {
   }
 }
 
-# 4. Create the Ingress Resource
+# 5. Create the Ingress Resource
 resource "kubernetes_ingress" "webapp_ingress" {
   depends_on = [kubernetes_manifest.tls_certificate]
 
