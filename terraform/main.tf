@@ -8,50 +8,21 @@ provider "kubernetes" {
   config_path = "~/.kube/config"
 }
 
-provider "helm" {
-  kubernetes {
-    config_path = "~/.kube/config"
-  }
-}
+# Removed Helm provider as cert-manager was installed manually
 
-# Namespace for cert-manager
+# Namespace for cert-manager (handle if it already exists)
 resource "kubernetes_namespace" "cert_manager_ns" {
   metadata {
     name = "cert-manager"
   }
-}
 
-# 1. Install Cert-Manager using Helm with CRDs
-resource "helm_release" "cert_manager" {
-  name       = "cert-manager"
-  repository = "https://charts.jetstack.io"
-  chart      = "cert-manager"
-  namespace  = kubernetes_namespace.cert_manager_ns.metadata[0].name
-
-  set {
-    name  = "installCRDs"
-    value = "true"
-  }
-
-  # Wait until cert-manager is deployed successfully
-  timeout = 600
-}
-
-# 2. Add a null resource to wait for CRDs to be available
-resource "null_resource" "wait_for_crds" {
-  depends_on = [helm_release.cert_manager]
-
-  provisioner "local-exec" {
-    command = <<EOT
-      kubectl wait --for=condition=established --timeout=60s crd/clusterissuers.cert-manager.io
-    EOT
+  lifecycle {
+    ignore_changes = [metadata]
   }
 }
 
-# 3. Create Let's Encrypt ClusterIssuer
+# 1. Let's Encrypt ClusterIssuer
 resource "kubernetes_manifest" "letsencrypt_prod" {
-  depends_on = [null_resource.wait_for_crds]
-
   manifest = {
     apiVersion = "cert-manager.io/v1"
     kind       = "ClusterIssuer"
@@ -77,10 +48,8 @@ resource "kubernetes_manifest" "letsencrypt_prod" {
   }
 }
 
-# 4. Create the Certificate using Cert-Manager for the domain cloud.talecompendium.com
+# 2. Create the Certificate using Cert-Manager for the domain cloud.talecompendium.com
 resource "kubernetes_manifest" "tls_certificate" {
-  depends_on = [kubernetes_manifest.letsencrypt_prod]
-
   manifest = {
     apiVersion = "cert-manager.io/v1"
     kind       = "Certificate"
@@ -100,7 +69,7 @@ resource "kubernetes_manifest" "tls_certificate" {
   }
 }
 
-# 5. Create the Ingress Resource
+# 3. Create the Ingress Resource
 resource "kubernetes_ingress" "webapp_ingress" {
   depends_on = [kubernetes_manifest.tls_certificate]
 
@@ -274,6 +243,57 @@ resource "kubernetes_deployment" "api" {
           env {
             name  = "NEXT_PUBLIC_WEBAPP_URL"
             value = "https://cloud.talecompendium.com"
+          }
+        }
+      }
+    }
+  }
+}
+
+# Kubernetes deployment for database
+resource "kubernetes_deployment" "database" {
+  metadata {
+    name = "database-deployment"
+  }
+
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        app = "database"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "database"
+        }
+      }
+
+      spec {
+        container {
+          name  = "database"
+          image = "postgres:14"
+
+          env {
+            name  = "POSTGRES_DB"
+            value = var.database_name
+          }
+
+          env {
+            name  = "POSTGRES_USER"
+            value = var.database_user
+          }
+
+          env {
+            name  = "POSTGRES_PASSWORD"
+            value = var.database_password
+          }
+
+          port {
+            container_port = 5432
           }
         }
       }
