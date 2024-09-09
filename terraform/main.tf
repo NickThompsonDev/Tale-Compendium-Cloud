@@ -60,7 +60,7 @@ resource "kubernetes_manifest" "webapp_ingress" {
       "name"      = "webapp-ingress"
       "namespace" = "default"
       "annotations" = {
-        "kubernetes.io/ingress.class"        = "nginx"  # Use nginx instead of gce
+        "kubernetes.io/ingress.class" = "nginx"
         "networking.gke.io/managed-certificates" = google_compute_managed_ssl_certificate.webapp_cert.name
       }
     }
@@ -96,10 +96,13 @@ resource "kubernetes_manifest" "webapp_ingress" {
           ]
         }
       }]
+      "tls" = [{
+        "hosts" = ["cloud.talecompendium.com"]
+        "secretName" = "webapp-managed-cert"  # Ensure this is Google-managed certificate
+      }]
     }
   }
 }
-
 
 
 # Kubernetes deployment for webapp
