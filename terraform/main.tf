@@ -14,13 +14,13 @@ provider "helm" {
   }
 }
 
-# 1. Create the Google-managed SSL Certificate
-# resource "google_compute_managed_ssl_certificate" "webapp_cert" {
-#   name = "webapp-managed-cert"
-#   managed {
-#     domains = ["cloud.talecompendium.com"]
-#   }
-# }
+#1. Create the Google-managed SSL Certificate
+resource "google_compute_managed_ssl_certificate" "webapp_cert" {
+  name = "webapp-managed-cert"
+  managed {
+    domains = ["cloud.talecompendium.com"]
+  }
+}
 
 # 2. Install NGINX Ingress Controller with Helm
 resource "helm_release" "nginx_ingress" {
