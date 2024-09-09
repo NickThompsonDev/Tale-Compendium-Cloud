@@ -8,7 +8,7 @@ provider "kubernetes" {
   config_path = "~/.kube/config"
 }
 
-# 1. Let's Encrypt ClusterIssuer
+# 1. Let's Encrypt ClusterIssuer (assume cert-manager and CRDs are already installed)
 resource "kubernetes_manifest" "letsencrypt_prod" {
   manifest = {
     apiVersion = "cert-manager.io/v1"
@@ -35,7 +35,7 @@ resource "kubernetes_manifest" "letsencrypt_prod" {
   }
 }
 
-# 2. Create the Certificate using Cert-Manager for the domain cloud.talecompendium.com
+# 2. Create the Certificate for cloud.talecompendium.com
 resource "kubernetes_manifest" "tls_certificate" {
   manifest = {
     apiVersion = "cert-manager.io/v1"
