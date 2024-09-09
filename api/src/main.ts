@@ -26,7 +26,7 @@ async function bootstrap() {
     .setDescription('API documentation for the Tale Compendium application')
     .setVersion('1.0')
     .addBearerAuth() // Add Bearer token support
-    .setBasePath('/api') // Specify the base path
+    .setExternalDoc('API Documentation', '/api/docs')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
