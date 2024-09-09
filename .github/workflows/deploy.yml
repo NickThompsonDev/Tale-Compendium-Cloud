@@ -132,6 +132,22 @@ jobs:
         run: |
           terraform import kubernetes_service.database default/database-service || echo "database-service does not exist, skipping import"
 
+      - name: Import ingress resource
+        working-directory: terraform
+        run: |
+          terraform import kubernetes_ingress.webapp_ingress default/webapp-ingress || echo "webapp-ingress does not exist, skipping import"
+
+      - name: Import TLS certificate resource
+        working-directory: terraform
+        run: |
+          terraform import kubernetes_manifest.tls_certificate default/webapp-tls || echo "webapp-tls certificate does not exist, skipping import"
+
+      - name: Import ClusterIssuer resource
+        working-directory: terraform
+        run: |
+          terraform import kubernetes_manifest.letsencrypt_prod default/letsencrypt-prod || echo "letsencrypt-prod ClusterIssuer does not exist, skipping import"
+
+
       # Step 9: Terraform Apply (Image-related Resources)
       - name: Terraform Apply
         working-directory: terraform
