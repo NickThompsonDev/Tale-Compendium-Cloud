@@ -140,12 +140,12 @@ jobs:
       - name: Import TLS certificate resource
         working-directory: terraform
         run: |
-          terraform import kubernetes_manifest.tls_certificate default/webapp-tls || echo "webapp-tls certificate does not exist, skipping import"
+          terraform import kubernetes_manifest.tls_certificate cert-manager.io/v1/Certificate/default/webapp-tls || echo "webapp-tls certificate does not exist, skipping import"
 
       - name: Import ClusterIssuer resource
         working-directory: terraform
         run: |
-          terraform import kubernetes_manifest.letsencrypt_prod default/letsencrypt-prod || echo "letsencrypt-prod ClusterIssuer does not exist, skipping import"
+          terraform import kubernetes_manifest.letsencrypt_prod cert-manager.io/v1/ClusterIssuer/letsencrypt-prod || echo "letsencrypt-prod ClusterIssuer does not exist, skipping import"
 
 
       # Step 9: Terraform Apply (Image-related Resources)
