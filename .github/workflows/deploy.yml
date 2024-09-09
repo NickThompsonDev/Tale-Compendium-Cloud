@@ -9,7 +9,7 @@ on:
       - 'api/**'
       - 'webapp/**'
       - 'database/**'
-      - '.github/**
+      - '.github/**'
   
 jobs:
   deploy-gke:
