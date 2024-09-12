@@ -30,9 +30,15 @@ resource "helm_release" "nginx_ingress" {
   namespace  = "ingress-nginx"
   create_namespace = true
 
+
   set {
     name  = "controller.service.type"
     value = "LoadBalancer"
+  }
+
+  set {
+    name  = "controller.service.loadBalancerIP"
+    value = "34.73.181.123"
   }
 
   set {
