@@ -36,12 +36,13 @@ Tale Compendium is an AI-powered platform designed to assist Dungeon Masters in 
 ## ⚙️ Tech Stack
 - Next.js
 - TypeScript
-- Convex
 - OpenAI
 - Clerk
 - ShadCN
 - Tailwind CSS
 - Stripe
+- Kubernetes
+- Terraform
 
 ## 🔋 Features
 - **AI-Powered NPC Creation**: Generate detailed D&D NPCs with stats, descriptions, and backstories.
