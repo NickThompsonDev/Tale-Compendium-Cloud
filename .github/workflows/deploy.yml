@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  
+
 jobs:
   deploy-gke:
     runs-on: ubuntu-latest
@@ -25,34 +25,28 @@ jobs:
       TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
 
     steps:
-      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v2
 
-      # Step 2: Authenticate to Google Cloud
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      # Step 3: Set up Cloud SDK
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           install_components: kubectl
 
-      # Step 4: Configure kubectl to use the GKE cluster
       - name: Configure kubectl to use the GKE cluster
         run: |
           gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
 
-      # Step 5: Authenticate Docker to GCR
       - name: Authenticate Docker to GCR
         run: |
           gcloud auth configure-docker
 
-      # Step 6: Build and Push Docker Images for API only if files in the API directory have changed
       - name: Build and Push API Docker Image
         run: |
           docker build \
@@ -66,7 +60,7 @@ jobs:
             --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
             --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
             --build-arg NEXT_PUBLIC_API_URL="https://34.73.181.123.com/api" \
-            --build-arg NEXT_PUBLIC_WEBAPP_URL="https://34.73.181.123	.com" \
+            --build-arg NEXT_PUBLIC_WEBAPP_URL="https://34.73.181.123" \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest \
             -f ./api/Dockerfile ./api
@@ -74,7 +68,6 @@ jobs:
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
 
-      # Step 7: Build and Push Webapp Docker Image only if files in the webapp directory have changed
       - name: Build and Push Webapp Docker Image
         run: |
           docker build \
@@ -88,7 +81,7 @@ jobs:
             --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
             --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
             --build-arg NEXT_PUBLIC_API_URL="https://34.73.181.123/api" \
-            --build-arg NEXT_PUBLIC_WEBAPP_URL="https://34.73.181.123.com" \
+            --build-arg NEXT_PUBLIC_WEBAPP_URL="https://34.73.181.123" \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest \
             -f ./webapp/Dockerfile ./webapp
@@ -96,65 +89,32 @@ jobs:
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest
 
-      # Step 7 Initialize Terraform and update lock file
       - name: Terraform Init
         working-directory: terraform
         run: |
           terraform init -upgrade
 
-      # Step 8: Import existing resources before Terraform apply
-      - name: Import webapp deployment
+      - name: Import existing resources
         working-directory: terraform
         run: |
           terraform import kubernetes_deployment.webapp default/webapp-deployment || echo "webapp-deployment does not exist, skipping import"
-
-      - name: Import api deployment
-        working-directory: terraform
-        run: |
           terraform import kubernetes_deployment.api default/api-deployment || echo "api-deployment does not exist, skipping import"
-
-      - name: Import database deployment
-        working-directory: terraform
-        run: |
           terraform import kubernetes_deployment.database default/database-deployment || echo "database-deployment does not exist, skipping import"
-
-      - name: Import webapp service
-        working-directory: terraform
-        run: |
           terraform import kubernetes_service.webapp default/webapp-service || echo "webapp-service does not exist, skipping import"
-
-      - name: Import api service
-        working-directory: terraform
-        run: |
           terraform import kubernetes_service.api default/api-service || echo "api-service does not exist, skipping import"
-
-      - name: Import database service
-        working-directory: terraform
-        run: |
           terraform import kubernetes_service.database default/database-service || echo "database-service does not exist, skipping import"
-
-      - name: Import nginx-ingress Helm release
-        working-directory: terraform
-        run: |
           terraform import helm_release.nginx_ingress ingress-nginx/nginx-ingress || echo "nginx-ingress does not exist, skipping import"
-
-      - name: Import webapp-ingress resource
-        working-directory: terraform
-        run: |
           terraform import kubernetes_manifest.webapp_ingress apiVersion=networking.k8s.io/v1,kind=Ingress,namespace=default,name=webapp-ingress || echo "webapp-ingress does not exist, skipping import"
 
-
-      # Step 9: Terraform Apply (Image-related Resources)
       - name: Terraform Apply
         working-directory: terraform
         run: |
+          trap 'echo "Deployment failed, cleaning up resources..."; terraform destroy -auto-approve' ERR
           terraform apply -auto-approve
 
-      # Step 10: Conditional Cleanup of old Docker images
       - name: Cleanup old Docker images in GCR (for webapp)
         run: |
           PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
-          # List all tags in the webapp image and delete those that aren't 'latest'
           gcloud container images list-tags gcr.io/${PROJECT_ID}/webapp --format='get(digest)' --filter='NOT tags:(latest)' | while read digest; do
             gcloud container images delete gcr.io/${PROJECT_ID}/webapp@$digest --quiet --force-delete-tags
           done
@@ -162,7 +122,6 @@ jobs:
       - name: Cleanup old Docker images in GCR (for api)
         run: |
           PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
-          # List all tags in the api image and delete those that aren't 'latest'
           gcloud container images list-tags gcr.io/${PROJECT_ID}/api --format='get(digest)' --filter='NOT tags:(latest)' | while read digest; do
             gcloud container images delete gcr.io/${PROJECT_ID}/api@$digest --quiet --force-delete-tags
           done

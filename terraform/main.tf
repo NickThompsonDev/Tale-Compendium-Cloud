@@ -14,7 +14,6 @@ provider "helm" {
   }
 }
 
-
 # Install NGINX Ingress Controller with Helm
 resource "helm_release" "nginx_ingress" {
   name       = "nginx-ingress"
@@ -40,7 +39,7 @@ resource "helm_release" "nginx_ingress" {
 
   set {
     name  = "controller.service.loadBalancerIP"
-    value = "34.73.181.123"  # Replace with your static IP
+    value = "34.73.181.123"
   }
 
   set {
@@ -58,7 +57,6 @@ resource "helm_release" "nginx_ingress" {
     value = "true"
   }
 }
-
 
 # Create the Ingress Resource Using Manifest
 resource "kubernetes_manifest" "webapp_ingress" {
@@ -108,7 +106,6 @@ resource "kubernetes_manifest" "webapp_ingress" {
   }
 }
 
-
 # Kubernetes deployment for webapp
 resource "kubernetes_deployment" "webapp" {
   metadata {
@@ -120,20 +117,17 @@ resource "kubernetes_deployment" "webapp" {
 
   spec {
     replicas = 1
-
     selector {
       match_labels = {
         app = "webapp"
       }
     }
-
     template {
       metadata {
         labels = {
           app = "webapp"
         }
       }
-
       spec {
         container {
           name  = "webapp"
@@ -169,14 +163,6 @@ resource "kubernetes_deployment" "webapp" {
             name  = "NEXT_PUBLIC_WEBAPP_URL"
             value = "https://34.73.181.123"
           }
-          env {
-            name  = "NEXT_PUBLIC_CLERK_SIGN_IN_URL"
-            value = var.clerk_sign_in_url
-          }
-          env {
-            name  = "NEXT_PUBLIC_CLERK_SIGN_UP_URL"
-            value = var.clerk_sign_up_url
-          }
         }
       }
     }
@@ -191,20 +177,17 @@ resource "kubernetes_deployment" "api" {
 
   spec {
     replicas = 1
-
     selector {
       match_labels = {
         app = "api"
       }
     }
-
     template {
       metadata {
         labels = {
           app = "api"
         }
       }
-
       spec {
         container {
           name  = "api"
@@ -236,22 +219,6 @@ resource "kubernetes_deployment" "api" {
             name  = "OPENAI_API_KEY"
             value = var.openai_api_key
           }
-          env {
-            name  = "STRIPE_SECRET_KEY"
-            value = var.stripe_secret_key
-          }
-          env {
-            name  = "CLERK_WEBHOOK_SECRET"
-            value = var.clerk_webhook_secret
-          }
-          env {
-            name  = "NEXT_PUBLIC_API_URL"
-            value = "https://34.73.181.123/api"
-          }
-          env {
-            name  = "NEXT_PUBLIC_WEBAPP_URL"
-            value = "https://34.73.181.123"
-          }
         }
       }
     }
@@ -266,20 +233,17 @@ resource "kubernetes_deployment" "database" {
 
   spec {
     replicas = 1
-
     selector {
       match_labels = {
         app = "database"
       }
     }
-
     template {
       metadata {
         labels = {
           app = "database"
         }
       }
-
       spec {
         container {
           name  = "database"
