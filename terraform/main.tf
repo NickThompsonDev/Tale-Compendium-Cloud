@@ -15,7 +15,7 @@ provider "helm" {
 }
 
 
-# 2. Install NGINX Ingress Controller with Helm
+# Install NGINX Ingress Controller with Helm
 resource "helm_release" "nginx_ingress" {
   name       = "nginx-ingress"
   repository = "https://kubernetes.github.io/ingress-nginx"
@@ -29,8 +29,18 @@ resource "helm_release" "nginx_ingress" {
   }
 
   set {
+    name  = "controller.service.ports.http"
+    value = "80"
+  }
+
+  set {
+    name  = "controller.service.ports.https"
+    value = "443"
+  }
+
+  set {
     name  = "controller.service.loadBalancerIP"
-    value = "34.73.181.123"
+    value = "34.73.181.123"  # Replace with your static IP
   }
 
   set {
@@ -39,34 +49,18 @@ resource "helm_release" "nginx_ingress" {
   }
 
   set {
-    name  = "controller.admissionWebhooks.patch.enabled"
+    name  = "controller.service.externalTrafficPolicy"
+    value = "Local"
+  }
+
+  set {
+    name  = "controller.metrics.enabled"
     value = "true"
-  }
-
-  set {
-    name  = "controller.admissionWebhooks.failurePolicy"
-    value = "Fail"
-  }
-
-  set {
-    name  = "controller.admissionWebhooks.port"
-    value = "443"
-  }
-
-  set {
-    name  = "controller.admissionWebhooks.patch.image.repository"
-    value = "registry.k8s.io/ingress-nginx/kube-webhook-certgen"
-  }
-
-  set {
-    name  = "controller.admissionWebhooks.patch.image.tag"
-    value = "v1.4.3"
   }
 }
 
 
-
-# 3. Create the Ingress Resource Using Manifest
+# Create the Ingress Resource Using Manifest
 resource "kubernetes_manifest" "webapp_ingress" {
   manifest = {
     "apiVersion" = "networking.k8s.io/v1"
@@ -113,6 +107,7 @@ resource "kubernetes_manifest" "webapp_ingress" {
     }
   }
 }
+
 
 # Kubernetes deployment for webapp
 resource "kubernetes_deployment" "webapp" {
@@ -326,7 +321,7 @@ resource "kubernetes_service" "webapp" {
     }
 
     port {
-      port        = 80
+      port        = 3000
       target_port = 3000
     }
 
