@@ -33,11 +33,6 @@ resource "helm_release" "nginx_ingress" {
   }
 
   set {
-    name  = "controller.service.ports.https"
-    value = "443"
-  }
-
-  set {
     name  = "controller.service.loadBalancerIP"
     value = "34.73.181.123"
   }
@@ -51,12 +46,8 @@ resource "helm_release" "nginx_ingress" {
     name  = "controller.service.externalTrafficPolicy"
     value = "Local"
   }
-
-  set {
-    name  = "controller.metrics.enabled"
-    value = "true"
-  }
 }
+
 
 # Create the Ingress Resource Using Manifest
 resource "kubernetes_manifest" "webapp_ingress" {
@@ -68,6 +59,7 @@ resource "kubernetes_manifest" "webapp_ingress" {
       "namespace" = "default"
       "annotations" = {
         "kubernetes.io/ingress.class" = "nginx"
+        "nginx.ingress.kubernetes.io/rewrite-target" = "/"
       }
     }
     "spec" = {
@@ -105,6 +97,7 @@ resource "kubernetes_manifest" "webapp_ingress" {
     }
   }
 }
+
 
 # Kubernetes deployment for webapp
 resource "kubernetes_deployment" "webapp" {
@@ -157,11 +150,11 @@ resource "kubernetes_deployment" "webapp" {
           }
           env {
             name  = "NEXT_PUBLIC_API_URL"
-            value = "https://34.73.181.123/api"
+            value = "https://cloud.talecompendium.com/api"
           }
           env {
             name  = "NEXT_PUBLIC_WEBAPP_URL"
-            value = "https://34.73.181.123"
+            value = "https://cloud.talecompendium.com"
           }
         }
       }
