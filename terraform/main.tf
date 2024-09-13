@@ -39,15 +39,31 @@ resource "helm_release" "nginx_ingress" {
   }
 
   set {
-    name  = "controller.service.externalTrafficPolicy"
-    value = "Local"
+    name  = "controller.admissionWebhooks.patch.enabled"
+    value = "true"
   }
 
   set {
-    name  = "controller.metrics.enabled"
-    value = "true"
+    name  = "controller.admissionWebhooks.failurePolicy"
+    value = "Fail"
+  }
+
+  set {
+    name  = "controller.admissionWebhooks.port"
+    value = "443"
+  }
+
+  set {
+    name  = "controller.admissionWebhooks.patch.image.repository"
+    value = "registry.k8s.io/ingress-nginx/kube-webhook-certgen"
+  }
+
+  set {
+    name  = "controller.admissionWebhooks.patch.image.tag"
+    value = "v1.4.3"
   }
 }
+
 
 
 # 3. Create the Ingress Resource Using Manifest
@@ -60,7 +76,6 @@ resource "kubernetes_manifest" "webapp_ingress" {
       "namespace" = "default"
       "annotations" = {
         "kubernetes.io/ingress.class" = "nginx"
-        "nginx.ingress.kubernetes.io/rewrite-target" = "/$1"
       }
     }
     "spec" = {
@@ -69,7 +84,7 @@ resource "kubernetes_manifest" "webapp_ingress" {
         "http" = {
           "paths" = [
             {
-              "path"     = "/api(/|$)(.*)"
+              "path"     = "/api"
               "pathType" = "Prefix"
               "backend"  = {
                 "service" = {
@@ -81,7 +96,7 @@ resource "kubernetes_manifest" "webapp_ingress" {
               }
             },
             {
-              "path"     = "/(.*)"
+              "path"     = "/"
               "pathType" = "Prefix"
               "backend"  = {
                 "service" = {
@@ -98,7 +113,6 @@ resource "kubernetes_manifest" "webapp_ingress" {
     }
   }
 }
-
 
 
 # Kubernetes deployment for webapp
