@@ -143,10 +143,6 @@ jobs:
         run: |
           terraform import kubernetes_manifest.webapp_ingress apiVersion=networking.k8s.io/v1,kind=Ingress,namespace=default,name=webapp-ingress || echo "webapp-ingress does not exist, skipping import"
 
-      - name: Import SSL certificate
-        working-directory: terraform
-        run: |
-          terraform import google_compute_managed_ssl_certificate.webapp_cert webapp-managed-cert || echo "webapp-managed-cert does not exist, skipping import"
 
       # Step 9: Terraform Apply (Image-related Resources)
       - name: Terraform Apply

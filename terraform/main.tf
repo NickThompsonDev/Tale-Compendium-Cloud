@@ -114,7 +114,6 @@ resource "kubernetes_manifest" "webapp_ingress" {
   }
 }
 
-
 # Kubernetes deployment for webapp
 resource "kubernetes_deployment" "webapp" {
   metadata {
