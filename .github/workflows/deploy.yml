@@ -65,8 +65,8 @@ jobs:
             --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
             --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
             --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
-            --build-arg NEXT_PUBLIC_API_URL="https://cloud.talecompendium.com/api" \
-            --build-arg NEXT_PUBLIC_WEBAPP_URL="https://cloud.talecompendium.com" \
+            --build-arg NEXT_PUBLIC_API_URL="https://34.73.181.123.com/api" \
+            --build-arg NEXT_PUBLIC_WEBAPP_URL="https://34.73.181.123	.com" \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest \
             -f ./api/Dockerfile ./api
@@ -87,8 +87,8 @@ jobs:
             --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
             --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
             --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
-            --build-arg NEXT_PUBLIC_API_URL="https://cloud.talecompendium.com/api" \
-            --build-arg NEXT_PUBLIC_WEBAPP_URL="https://cloud.talecompendium.com" \
+            --build-arg NEXT_PUBLIC_API_URL="https://34.73.181.123/api" \
+            --build-arg NEXT_PUBLIC_WEBAPP_URL="https://34.73.181.123.com" \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest \
             -f ./webapp/Dockerfile ./webapp

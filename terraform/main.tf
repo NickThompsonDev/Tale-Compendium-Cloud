@@ -163,11 +163,11 @@ resource "kubernetes_deployment" "webapp" {
           }
           env {
             name  = "NEXT_PUBLIC_API_URL"
-            value = "https://cloud.talecompendium.com/api"
+            value = "https://34.73.181.123/api"
           }
           env {
             name  = "NEXT_PUBLIC_WEBAPP_URL"
-            value = "https://cloud.talecompendium.com"
+            value = "https://34.73.181.123"
           }
           env {
             name  = "NEXT_PUBLIC_CLERK_SIGN_IN_URL"
@@ -246,11 +246,11 @@ resource "kubernetes_deployment" "api" {
           }
           env {
             name  = "NEXT_PUBLIC_API_URL"
-            value = "https://cloud.talecompendium.com/api"
+            value = "https://34.73.181.123/api"
           }
           env {
             name  = "NEXT_PUBLIC_WEBAPP_URL"
-            value = "https://cloud.talecompendium.com"
+            value = "https://34.73.181.123"
           }
         }
       }
