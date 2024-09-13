@@ -14,13 +14,6 @@ provider "helm" {
   }
 }
 
-#1. Create the Google-managed SSL Certificate
-resource "google_compute_managed_ssl_certificate" "webapp_cert" {
-  name = "webapp-managed-cert"
-  managed {
-    domains = ["cloud.talecompendium.com"]
-  }
-}
 
 # 2. Install NGINX Ingress Controller with Helm
 resource "helm_release" "nginx_ingress" {
@@ -29,7 +22,6 @@ resource "helm_release" "nginx_ingress" {
   chart      = "ingress-nginx"
   namespace  = "ingress-nginx"
   create_namespace = true
-
 
   set {
     name  = "controller.service.type"
@@ -57,6 +49,7 @@ resource "helm_release" "nginx_ingress" {
   }
 }
 
+
 # 3. Create the Ingress Resource Using Manifest
 resource "kubernetes_manifest" "webapp_ingress" {
   manifest = {
@@ -67,7 +60,7 @@ resource "kubernetes_manifest" "webapp_ingress" {
       "namespace" = "default"
       "annotations" = {
         "kubernetes.io/ingress.class" = "nginx"
-        "networking.gke.io/managed-certificates" = google_compute_managed_ssl_certificate.webapp_cert.name
+        "nginx.ingress.kubernetes.io/rewrite-target" = "/$1"
       }
     }
     "spec" = {
@@ -76,7 +69,7 @@ resource "kubernetes_manifest" "webapp_ingress" {
         "http" = {
           "paths" = [
             {
-              "path"     = "/api"
+              "path"     = "/api(/|$)(.*)"
               "pathType" = "Prefix"
               "backend"  = {
                 "service" = {
@@ -88,7 +81,7 @@ resource "kubernetes_manifest" "webapp_ingress" {
               }
             },
             {
-              "path"     = "/"
+              "path"     = "/(.*)"
               "pathType" = "Prefix"
               "backend"  = {
                 "service" = {
@@ -102,13 +95,10 @@ resource "kubernetes_manifest" "webapp_ingress" {
           ]
         }
       }]
-      "tls" = [{
-        "hosts" = ["cloud.talecompendium.com"]
-        "secretName" = "webapp-managed-cert"  # Ensure this is Google-managed certificate
-      }]
     }
   }
 }
+
 
 
 # Kubernetes deployment for webapp
