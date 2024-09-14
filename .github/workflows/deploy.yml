@@ -97,24 +97,40 @@ jobs:
       - name: Import existing resources
         working-directory: terraform
         run: |
-          terraform import kubernetes_deployment.webapp default/webapp-deployment || echo "webapp-deployment does not exist, skipping import"
-          terraform import kubernetes_deployment.api default/api-deployment || echo "api-deployment does not exist, skipping import"
-          terraform import kubernetes_deployment.database default/database-deployment || echo "database-deployment does not exist, skipping import"
-          terraform import kubernetes_service.webapp default/webapp-service || echo "webapp-service does not exist, skipping import"
-          terraform import kubernetes_service.api default/api-service || echo "api-service does not exist, skipping import"
-          terraform import kubernetes_service.database default/database-service || echo "database-service does not exist, skipping import"
-          terraform import helm_release.nginx_ingress ingress-nginx/nginx-ingress || echo "nginx-ingress does not exist, skipping import"
-          terraform import kubernetes_manifest.webapp_ingress apiVersion=networking.k8s.io/v1,kind=Ingress,namespace=default,name=webapp-ingress || echo "webapp-ingress does not exist, skipping import"
-          terraform import kubernetes_secret.gcs_sa_key default/gcs-sa-key || echo "gcs-sa-key does not exist, skipping import"
-          terraform import helm_release.cert_manager cert-manager
-          terraform import kubernetes_role_binding.cert_manager_leader_election cert-manager/cert-manager-leader-election
-          terraform import kubernetes_manifest.letsencrypt_prod default/letsencrypt-prod
+          terraform import kubernetes_deployment.webapp default/webapp-deployment || echo "webapp-deployment does not exist, skipping import" || true
+          terraform import kubernetes_deployment.api default/api-deployment || echo "api-deployment does not exist, skipping import" || true
+          terraform import kubernetes_deployment.database default/database-deployment || echo "database-deployment does not exist, skipping import" || true
+          terraform import kubernetes_service.webapp default/webapp-service || echo "webapp-service does not exist, skipping import" || true
+          terraform import kubernetes_service.api default/api-service || echo "api-service does not exist, skipping import" || true
+          terraform import kubernetes_service.database default/database-service || echo "database-service does not exist, skipping import" || true
+          terraform import helm_release.nginx_ingress ingress-nginx/nginx-ingress || echo "nginx-ingress does not exist, skipping import" || true
+          terraform import kubernetes_manifest.webapp_ingress apiVersion=networking.k8s.io/v1,kind=Ingress,namespace=default,name=webapp-ingress || echo "webapp-ingress does not exist, skipping import" || true
+          terraform import kubernetes_secret.gcs_sa_key default/gcs-sa-key || echo "gcs-sa-key does not exist, skipping import" || true
+          terraform import helm_release.cert_manager cert-manager || echo "cert-manager does not exist, skipping import" || true
+          terraform import kubernetes_role_binding.cert_manager_leader_election cert-manager/cert-manager-leader-election || echo "cert-manager-leader-election does not exist, skipping import" || true
+          terraform import kubernetes_manifest.letsencrypt_prod default/letsencrypt-prod || echo "letsencrypt-prod does not exist, skipping import" || true
 
       - name: Terraform Apply
         working-directory: terraform
         run: |
-          trap 'echo "Deployment failed, cleaning up resources..."; terraform destroy -auto-approve' ERR
-          terraform apply -auto-approve
+          # Attempt terraform apply
+          terraform apply -auto-approve || { 
+            echo "Deployment failed, selectively destroying newly created resources..."; 
+            
+            # If there's a log of imported resources, protect them from destruction
+            if [ -f imported_resources.log ]; then
+              echo "Removing imported resources from state to prevent destruction..."
+              for resource in $(cat imported_resources.log); do
+                terraform state rm $resource
+              done
+            fi
+            
+            # Destroy only the newly created resources
+            terraform destroy -auto-approve;
+            
+            # Exit with error to signal the failure
+            exit 1;  
+          }
 
       - name: Cleanup old Docker images in GCR (for webapp)
         run: |
