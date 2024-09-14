@@ -1,21 +1,33 @@
 import { Injectable } from '@nestjs/common';
 import { Storage } from '@google-cloud/storage';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { StorageEntity } from './storage.entity'; // Your updated entity
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class StorageService {
   private storage: Storage;
   private bucketName = process.env.GCS_BUCKET_NAME;
 
-  constructor() {
+  constructor(
+    @InjectRepository(StorageEntity)
+    private storageRepository: Repository<StorageEntity>,
+  ) {
     this.storage = new Storage();
   }
 
   async uploadFileToGCS(
     buffer: Buffer,
-    filename: string,
+    originalFilename: string,
     mimetype: string,
-  ): Promise<{ storageId: number; url: string }> {
+  ): Promise<{ id: number; filename: string; imageUrl: string }> {
     const bucket = this.storage.bucket(this.bucketName);
+
+    // Generate a unique filename using UUID
+    const extension = originalFilename.split('.').pop();
+    const filename = `${uuidv4()}.${extension}`;
+
     const file = bucket.file(filename);
 
     await file.save(buffer, {
@@ -24,18 +36,29 @@ export class StorageService {
       },
     });
 
-    const url = `https://storage.googleapis.com/${this.bucketName}/${filename}`;
-    const storageId = this.extractStorageIdFromUrl(url); // Simplify this logic as needed
-    return { storageId, url };
+    const imageUrl = `https://storage.googleapis.com/${this.bucketName}/${filename}`;
+
+    // Save the file information to PostgreSQL
+    const newFile = this.storageRepository.create({
+      filename,
+      mimetype,
+      imageUrl,
+    });
+
+    const savedFile = await this.storageRepository.save(newFile);
+
+    return { id: savedFile.id, filename, imageUrl };
   }
 
   async getFileUrlByStorageId(storageId: number): Promise<string> {
-    // Return the URL where the image is stored, assuming storageId is the filename or part of it
-    return `https://storage.googleapis.com/${this.bucketName}/${storageId}`;
-  }
+    const file = await this.storageRepository.findOne({
+      where: { id: storageId },
+    });
 
-  private extractStorageIdFromUrl(url: string): number {
-    // Logic to extract storageId from the file URL (if needed)
-    return Number(url.split('/').pop().split('.')[0]);
+    if (!file) {
+      throw new Error(`File with storage ID ${storageId} not found`);
+    }
+
+    return file.imageUrl;
   }
 }

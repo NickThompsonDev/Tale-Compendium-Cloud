@@ -35,19 +35,20 @@ export class StorageController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(
     @UploadedFile() file: Express.Multer.File,
-  ): Promise<{ id: number; url: string }> {
+  ): Promise<{ id: number; filename: string; imageUrl: string }> {
     this.logger.log(`Uploading file: ${file.originalname}`);
 
-    const { storageId, url } = await this.storageService.uploadFileToGCS(
-      file.buffer,
-      file.originalname,
-      file.mimetype,
-    );
+    const { id, filename, imageUrl } =
+      await this.storageService.uploadFileToGCS(
+        file.buffer,
+        file.originalname,
+        file.mimetype,
+      );
 
     this.logger.log(
-      `File uploaded with storage ID: ${storageId} and URL: ${url}`,
+      `File uploaded with ID: ${id}, filename: ${filename}, and URL: ${imageUrl}`,
     );
-    return { id: storageId, url };
+    return { id, filename, imageUrl };
   }
 
   @Get(':storageId')

@@ -9,10 +9,6 @@ export class StorageEntity {
 
   @Column()
   @ApiProperty()
-  npcId: number;
-
-  @Column()
-  @ApiProperty()
   filename: string;
 
   @Column()
