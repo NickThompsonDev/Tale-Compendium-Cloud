@@ -59,7 +59,23 @@ resource "helm_release" "cert_manager" {
     name  = "installCRDs"
     value = "true"
   }
+
+  set {
+    name  = "global.leaderElection.namespace"
+    value = "cert-manager"  # Override leader election namespace
+  }
+
+  set {
+    name  = "cainjector.leaderElection.namespace"
+    value = "cert-manager"  # Ensure CA Injector uses correct namespace
+  }
+
+  set {
+    name  = "webhook.leaderElection.namespace"
+    value = "cert-manager"  # Ensure Webhook uses correct namespace
+  }
 }
+
 
 resource "kubernetes_role_binding" "cert_manager_leader_election" {
   metadata {
