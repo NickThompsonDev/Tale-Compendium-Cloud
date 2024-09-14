@@ -97,19 +97,18 @@ jobs:
       - name: Import existing resources
         working-directory: terraform
         run: |
-          terraform import kubernetes_deployment.webapp default/webapp-deployment || echo "webapp-deployment does not exist, skipping import" || true
-          terraform import kubernetes_deployment.api default/api-deployment || echo "api-deployment does not exist, skipping import" || true
-          terraform import kubernetes_deployment.database default/database-deployment || echo "database-deployment does not exist, skipping import" || true
-          terraform import kubernetes_service.webapp default/webapp-service || echo "webapp-service does not exist, skipping import" || true
-          terraform import kubernetes_service.api default/api-service || echo "api-service does not exist, skipping import" || true
-          terraform import kubernetes_service.database default/database-service || echo "database-service does not exist, skipping import" || true
-          terraform import helm_release.nginx_ingress ingress-nginx/nginx-ingress || echo "nginx-ingress does not exist, skipping import" || true
-          terraform import kubernetes_manifest.webapp_ingress apiVersion=networking.k8s.io/v1,kind=Ingress,namespace=default,name=webapp-ingress || echo "webapp-ingress does not exist, skipping import" || true
-          terraform import kubernetes_secret.gcs_sa_key default/gcs-sa-key || echo "gcs-sa-key does not exist, skipping import" || true
-          terraform import helm_release.cert_manager cert-manager || echo "cert-manager does not exist, skipping import" || true
-          terraform import kubernetes_role_binding.cert_manager_leader_election cert-manager/cert-manager-leader-election || echo "cert-manager-leader-election does not exist, skipping import" || true
-          terraform import kubernetes_manifest.letsencrypt_prod default/letsencrypt-prod || echo "letsencrypt-prod does not exist, skipping import" || true
-
+          terraform import kubernetes_deployment.webapp default/webapp-deployment || echo "webapp-deployment does not exist, skipping import"
+          terraform import kubernetes_deployment.api default/api-deployment || echo "api-deployment does not exist, skipping import"
+          terraform import kubernetes_deployment.database default/database-deployment || echo "database-deployment does not exist, skipping import"
+          terraform import kubernetes_service.webapp default/webapp-service || echo "webapp-service does not exist, skipping import"
+          terraform import kubernetes_service.api default/api-service || echo "api-service does not exist, skipping import"
+          terraform import kubernetes_service.database default/database-service || echo "database-service does not exist, skipping import"
+          terraform import helm_release.cert_manager cert-manager/cert-manager || echo "cert-manager does not exist, skipping import"
+          terraform import kubernetes_role_binding.cert_manager_leader_election cert-manager/cert-manager-leader-election || echo "cert-manager-leader-election does not exist, skipping import"
+          terraform import kubernetes_manifest.letsencrypt_prod 'apiVersion=cert-manager.io/v1,kind=ClusterIssuer,name=letsencrypt-prod' || echo "letsencrypt-prod does not exist, skipping import"
+          terraform import helm_release.nginx_ingress ingress-nginx/nginx-ingress || echo "nginx-ingress does not exist, skipping import"
+          terraform import kubernetes_secret.gcs_sa_key default/gcs-sa-key || echo "gcs-sa-key does not exist, skipping import"
+      
       - name: Terraform Apply
         working-directory: terraform
         run: |
