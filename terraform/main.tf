@@ -142,20 +142,6 @@ resource "kubernetes_manifest" "webapp_ingress" {
   }
 }
 
-resource "kubernetes_secret" "tls_secret" {
-  metadata {
-    name      = "tls-secret"
-    namespace = "default"
-  }
-
-  data = {
-    tls.crt = filebase64("${path.module}/certs/talecompendiumcloud.crt")
-    tls.key = filebase64("${path.module}/certs/talecompendiumcloud.key")
-  }
-}
-
-
-
 # Kubernetes deployment for webapp
 resource "kubernetes_deployment" "webapp" {
   metadata {
