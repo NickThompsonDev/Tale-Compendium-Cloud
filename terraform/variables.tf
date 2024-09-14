@@ -140,9 +140,3 @@ variable "gcs_bucket_name" {
   type        = string
   default     = "talecompendium-images"
 }
-
-variable "region" {
-  description = "The region for the GCS bucket"
-  type        = string
-  default     = "us-east1"
-}
