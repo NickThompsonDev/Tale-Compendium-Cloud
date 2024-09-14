@@ -108,7 +108,10 @@ jobs:
           terraform import kubernetes_manifest.letsencrypt_prod 'apiVersion=cert-manager.io/v1,kind=ClusterIssuer,name=letsencrypt-prod' || echo "letsencrypt-prod does not exist, skipping import"
           terraform import helm_release.nginx_ingress ingress-nginx/nginx-ingress || echo "nginx-ingress does not exist, skipping import"
           terraform import kubernetes_secret.gcs_sa_key default/gcs-sa-key || echo "gcs-sa-key does not exist, skipping import"
-      
+          terraform import kubernetes_manifest.webapp_ingress 'apiVersion=networking.k8s.io/v1,kind=Ingress,namespace=default,name=webapp-ingress' || echo "webapp-ingress does not exist, skipping import"
+          terraform import google_storage_bucket.talecompendium_images talecompendium-images || echo "Bucket already managed, skipping import"
+          terraform import google_service_account.api_service_account projects/nodal-clock-433208-b4/serviceAccounts/api-sa@nodal-clock-433208-b4.iam.gserviceaccount.com || echo "Service account already managed, skipping import"
+
       - name: Terraform Apply
         working-directory: terraform
         run: |
