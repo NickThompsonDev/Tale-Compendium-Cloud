@@ -48,6 +48,45 @@ resource "helm_release" "nginx_ingress" {
   }
 }
 
+resource "helm_release" "cert_manager" {
+  name       = "cert-manager"
+  repository = "https://charts.jetstack.io"
+  chart      = "cert-manager"
+  namespace  = "cert-manager"
+  create_namespace = true
+
+  set {
+    name  = "installCRDs"
+    value = "true"
+  }
+}
+
+resource "kubernetes_manifest" "letsencrypt_prod" {
+  manifest = {
+    "apiVersion" = "cert-manager.io/v1"
+    "kind"       = "ClusterIssuer"
+    "metadata" = {
+      "name" = "letsencrypt-prod"
+    }
+    "spec" = {
+      "acme" = {
+        "server" = "https://acme-v02.api.letsencrypt.org/directory"
+        "email"  = "nickbdt86@gmail.com"
+        "privateKeySecretRef" = {
+          "name" = "letsencrypt-prod-key"
+        }
+        "solvers" = [{
+          "http01" = {
+            "ingress" = {
+              "class" = "nginx"
+            }
+          }
+        }]
+      }
+    }
+  }
+}
+
 
 # Create the Ingress Resource Using Manifest
 resource "kubernetes_manifest" "webapp_ingress" {
@@ -60,11 +99,12 @@ resource "kubernetes_manifest" "webapp_ingress" {
       "annotations" = {
         "kubernetes.io/ingress.class" = "nginx"
         "nginx.ingress.kubernetes.io/rewrite-target" = "/"
+        "cert-manager.io/cluster-issuer" = "letsencrypt-prod"  # Optional, if using cert-manager
       }
     }
     "spec" = {
       "rules" = [{
-        "host" = "cloud.talecompendium.com"
+        "host" = "talecompendiumcloud.com"
         "http" = {
           "paths" = [
             {
@@ -94,9 +134,26 @@ resource "kubernetes_manifest" "webapp_ingress" {
           ]
         }
       }]
+      "tls" = [{
+        "hosts"      = ["talecompendiumcloud.com"]
+        "secretName" = "tls-secret"  # Secret containing SSL certificates
+      }]
     }
   }
 }
+
+resource "kubernetes_secret" "tls_secret" {
+  metadata {
+    name      = "tls-secret"
+    namespace = "default"
+  }
+
+  data = {
+    tls.crt = filebase64("${path.module}/certs/talecompendiumcloud.crt")
+    tls.key = filebase64("${path.module}/certs/talecompendiumcloud.key")
+  }
+}
+
 
 
 # Kubernetes deployment for webapp
@@ -150,11 +207,11 @@ resource "kubernetes_deployment" "webapp" {
           }
           env {
             name  = "NEXT_PUBLIC_API_URL"
-            value = "https://cloud.talecompendium.com/api"
+            value = "https://talecompendiumcloud.com/api"
           }
           env {
             name  = "NEXT_PUBLIC_WEBAPP_URL"
-            value = "https://cloud.talecompendium.com"
+            value = "https://talecompendiumcloud.com"
           }
         }
       }

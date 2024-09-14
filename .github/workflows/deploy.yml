@@ -18,8 +18,8 @@ jobs:
       TF_VAR_clerk_webhook_secret: ${{ secrets.CLERK_WEBHOOK_SECRET }}
       TF_VAR_database_host: "database-service.default.svc.cluster.local"
       TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
-      TF_VAR_next_public_api_url: "https://cloud.talecompendium.com/api"
-      TF_VAR_next_public_webapp_url: "https://cloud.talecompendium.com"
+      TF_VAR_next_public_api_url: "https://talecompendiumcloud.com/api"
+      TF_VAR_next_public_webapp_url: "https://talecompendiumcloud.com"
       TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
       TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
       TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
@@ -59,8 +59,8 @@ jobs:
             --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
             --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
             --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
-            --build-arg NEXT_PUBLIC_API_URL="https://cloud.talecompendium.com/api" \
-            --build-arg NEXT_PUBLIC_WEBAPP_URL="https://cloud.talecompendium.com" \
+            --build-arg NEXT_PUBLIC_API_URL="https://talecompendiumcloud.com/api" \
+            --build-arg NEXT_PUBLIC_WEBAPP_URL="https://talecompendiumcloud.com" \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest \
             -f ./api/Dockerfile ./api
@@ -80,8 +80,8 @@ jobs:
             --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
             --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
             --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
-            --build-arg NEXT_PUBLIC_API_URL="https://cloud.talecompendium.com/api" \
-            --build-arg NEXT_PUBLIC_WEBAPP_URL="https://cloud.talecompendium.com" \
+            --build-arg NEXT_PUBLIC_API_URL="https://talecompendiumcloud.com/api" \
+            --build-arg NEXT_PUBLIC_WEBAPP_URL="https://talecompendiumcloud.com" \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest \
             -f ./webapp/Dockerfile ./webapp
