@@ -105,6 +105,7 @@ jobs:
           terraform import kubernetes_service.database default/database-service || echo "database-service does not exist, skipping import"
           terraform import helm_release.nginx_ingress ingress-nginx/nginx-ingress || echo "nginx-ingress does not exist, skipping import"
           terraform import kubernetes_manifest.webapp_ingress apiVersion=networking.k8s.io/v1,kind=Ingress,namespace=default,name=webapp-ingress || echo "webapp-ingress does not exist, skipping import"
+          terraform import kubernetes_secret.gcs_sa_key default/gcs-sa-key || echo "gcs-sa-key does not exist, skipping import"
 
       - name: Terraform Apply
         working-directory: terraform

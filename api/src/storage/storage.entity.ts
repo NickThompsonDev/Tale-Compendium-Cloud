@@ -1,4 +1,3 @@
-// src/storage/storage.entity.ts
 import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -8,9 +7,9 @@ export class StorageEntity {
   @ApiProperty()
   id: number;
 
-  @Column({ type: 'bytea' })
+  @Column()
   @ApiProperty()
-  buffer: Buffer;
+  npcId: number;
 
   @Column()
   @ApiProperty()
@@ -19,6 +18,10 @@ export class StorageEntity {
   @Column()
   @ApiProperty()
   mimetype: string;
+
+  @Column()
+  @ApiProperty()
+  imageUrl: string; // Stores the public URL of the image
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   @ApiProperty()

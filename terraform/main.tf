@@ -62,17 +62,17 @@ resource "helm_release" "cert_manager" {
 
   set {
     name  = "global.leaderElection.namespace"
-    value = "cert-manager"  # Override leader election namespace
+    value = "cert-manager"
   }
 
   set {
     name  = "cainjector.leaderElection.namespace"
-    value = "cert-manager"  # Ensure CA Injector uses correct namespace
+    value = "cert-manager"
   }
 
   set {
     name  = "webhook.leaderElection.namespace"
-    value = "cert-manager"  # Ensure Webhook uses correct namespace
+    value = "cert-manager"
   }
 }
 
@@ -86,13 +86,13 @@ resource "kubernetes_role_binding" "cert_manager_leader_election" {
   role_ref {
     api_group = "rbac.authorization.k8s.io"
     kind      = "ClusterRole"
-    name      = "cert-manager"  # Refers to the cert-manager ClusterRole
+    name      = "cert-manager"
   }
 
   subject {
     kind      = "ServiceAccount"
-    name      = "cert-manager"  # The service account for cert-manager
-    namespace = "cert-manager"  # The namespace for the service account
+    name      = "cert-manager"
+    namespace = "cert-manager"
   }
 }
 
@@ -134,8 +134,7 @@ resource "kubernetes_manifest" "webapp_ingress" {
       "namespace" = "default"
       "annotations" = {
         "kubernetes.io/ingress.class" = "nginx"
-        "nginx.ingress.kubernetes.io/rewrite-target" = "/"
-        "cert-manager.io/cluster-issuer" = "letsencrypt-prod"  # Optional, if using cert-manager
+        "cert-manager.io/cluster-issuer" = "letsencrypt-prod"
       }
     }
     "spec" = {
@@ -172,7 +171,7 @@ resource "kubernetes_manifest" "webapp_ingress" {
       }]
       "tls" = [{
         "hosts"      = ["talecompendiumcloud.com"]
-        "secretName" = "tls-secret"  # Secret containing SSL certificates
+        "secretName" = "tls-secret"
       }]
     }
   }
@@ -291,6 +290,36 @@ resource "kubernetes_deployment" "api" {
             name  = "OPENAI_API_KEY"
             value = var.openai_api_key
           }
+          env {
+            name  = "GCS_BUCKET_NAME"
+            value = var.gcs_bucket_name
+          }
+
+          env {
+            name  = "GCP_PROJECT_ID"
+            value = var.project_id
+          }
+
+          # Mount the GCS service account key as a volume
+          volume_mount {
+            name      = "gcs-sa-key-volume"
+            mount_path = "/etc/gcs-sa"
+            read_only  = true
+          }
+
+          # Set GOOGLE_APPLICATION_CREDENTIALS to the path where the key is mounted
+          env {
+            name  = "GOOGLE_APPLICATION_CREDENTIALS"
+            value = "/etc/gcs-sa/key.json"
+          }
+        }
+
+        # Volume to store GCS service account key
+        volume {
+          name = "gcs-sa-key-volume"
+          secret {
+            secret_name = kubernetes_secret.gcs_sa_key.metadata[0].name
+          }
         }
       }
     }
@@ -404,3 +433,38 @@ resource "kubernetes_service" "database" {
     type = "ClusterIP"
   }
 }
+
+resource "google_storage_bucket" "talecompendium_images" {
+  name     = var.gcs_bucket_name
+  location = var.region
+  uniform_bucket_level_access = true
+}
+
+resource "google_service_account" "api_service_account" {
+  account_id   = "api-sa"
+  display_name = "API Service Account"
+}
+
+resource "google_storage_bucket_iam_member" "storage_object_creator" {
+  bucket = google_storage_bucket.talecompendium_images.name
+  role   = "roles/storage.objectCreator"
+  member = "serviceAccount:${google_service_account.api_service_account.email}"
+}
+
+resource "google_service_account_key" "api_sa_key" {
+  service_account_id = google_service_account.api_service_account.id
+  private_key_type   = "TYPE_GOOGLE_CREDENTIALS_FILE"
+}
+
+resource "kubernetes_secret" "gcs_sa_key" {
+  metadata {
+    name      = "gcs-sa-key"
+    namespace = "default"  # Ensure this matches your application's namespace
+  }
+
+  data = {
+    # Base64 encode the GCS key and store it as a Kubernetes Secret
+    "key.json" = base64encode(google_service_account_key.api_sa_key.private_key)
+  }
+}
+

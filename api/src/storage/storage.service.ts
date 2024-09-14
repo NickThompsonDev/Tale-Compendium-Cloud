@@ -1,48 +1,41 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { StorageEntity } from './storage.entity';
+import { Storage } from '@google-cloud/storage';
 
 @Injectable()
 export class StorageService {
-  constructor(
-    @InjectRepository(StorageEntity)
-    private readonly storageRepository: Repository<StorageEntity>,
-  ) {}
+  private storage: Storage;
+  private bucketName = process.env.GCS_BUCKET_NAME;
 
-  async uploadFile(
+  constructor() {
+    this.storage = new Storage();
+  }
+
+  async uploadFileToGCS(
     buffer: Buffer,
     filename: string,
     mimetype: string,
-  ): Promise<StorageEntity> {
-    const file = this.storageRepository.create({
-      buffer,
-      filename,
-      mimetype, // Save the MIME type here
+  ): Promise<{ storageId: number; url: string }> {
+    const bucket = this.storage.bucket(this.bucketName);
+    const file = bucket.file(filename);
+
+    await file.save(buffer, {
+      metadata: {
+        contentType: mimetype,
+      },
     });
-    return this.storageRepository.save(file);
+
+    const url = `https://storage.googleapis.com/${this.bucketName}/${filename}`;
+    const storageId = this.extractStorageIdFromUrl(url); // Simplify this logic as needed
+    return { storageId, url };
   }
 
-  async getFileById(id: number): Promise<StorageEntity> {
-    return this.storageRepository.findOne({ where: { id } });
+  async getFileUrlByStorageId(storageId: number): Promise<string> {
+    // Return the URL where the image is stored, assuming storageId is the filename or part of it
+    return `https://storage.googleapis.com/${this.bucketName}/${storageId}`;
   }
 
-  async getFileWithMimeType(
-    id: number,
-  ): Promise<{ file: Buffer; mimetype: string; filename: string }> {
-    const file = await this.getFileById(id);
-    if (!file) {
-      throw new Error('File not found');
-    }
-    return {
-      file: file.buffer,
-      mimetype: file.mimetype,
-      filename: file.filename,
-    };
+  private extractStorageIdFromUrl(url: string): number {
+    // Logic to extract storageId from the file URL (if needed)
+    return Number(url.split('/').pop().split('.')[0]);
   }
-
-  // async getFileUrl(id: number): Promise<string> {
-  //   const url = `${process.env.BASE_URL}/storage/${id}`;
-  //   return url;
-  // }
 }

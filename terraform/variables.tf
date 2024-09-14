@@ -134,3 +134,15 @@ variable "database_host" {
   type        = string
   sensitive   = true
 }
+
+variable "gcs_bucket_name" {
+  description = "The name of the Google Cloud Storage bucket"
+  type        = string
+  default     = "talecompendium-images"
+}
+
+variable "region" {
+  description = "The region for the GCS bucket"
+  type        = string
+  default     = "us-east1"
+}
