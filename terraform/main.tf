@@ -61,6 +61,26 @@ resource "helm_release" "cert_manager" {
   }
 }
 
+resource "kubernetes_role_binding" "cert_manager_leader_election" {
+  metadata {
+    name      = "cert-manager-leader-election"
+    namespace = "cert-manager"
+  }
+
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = "cert-manager"  # Refers to the cert-manager ClusterRole
+  }
+
+  subject {
+    kind      = "ServiceAccount"
+    name      = "cert-manager"  # The service account for cert-manager
+    namespace = "cert-manager"  # The namespace for the service account
+  }
+}
+
+
 resource "kubernetes_manifest" "letsencrypt_prod" {
   manifest = {
     "apiVersion" = "cert-manager.io/v1"
