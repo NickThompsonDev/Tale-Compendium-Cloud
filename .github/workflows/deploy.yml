@@ -134,6 +134,8 @@ jobs:
             exit 1;  
           }
 
+          terraform output -raw google_service_account_key_private_key
+
       - name: Cleanup old Docker images in GCR (for webapp)
         run: |
           PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
