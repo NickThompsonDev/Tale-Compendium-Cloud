@@ -325,14 +325,6 @@ resource "kubernetes_deployment" "api" {
       }
     }
   }
-
-  # Lifecycle block to ensure proper deployment restart
-  lifecycle {
-    ignore_changes = [
-      metadata[0].annotations["kubectl.kubernetes.io/last-applied-configuration"]
-    ]
-    create_before_destroy = true  # Ensure deployment restarts on secret change
-  }
 }
 
 
