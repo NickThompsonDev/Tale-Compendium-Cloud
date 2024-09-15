@@ -22,28 +22,29 @@ const GenerateThumbnail = ({ setImage, setImageStorageId, image, imagePrompt, se
     try {
       const arrayBuffer = await blob.arrayBuffer();
       const fileTypeResult = await fileTypeFromBuffer(new Uint8Array(arrayBuffer));
-
+  
       if (!fileTypeResult) {
         throw new Error('Could not determine file type');
       }
-
+  
       const { mime, ext } = fileTypeResult;
-
-      // Remove any existing extension from the file name
       const cleanFileName = fileName.replace(/\.[^/.]+$/, "");
-
       const file = new File([blob], `${cleanFileName}.${ext}`, { type: mime });
       console.log('Detected MIME type:', mime);
-
+  
       const uploaded = await api.files.uploadFile(file);
       console.log('uploadedresponse', uploaded);
+      
       const storageId = uploaded.id;
-
+      const imageUrl = uploaded.imageUrl;
+  
+      if (!storageId) {
+        throw new Error("Storage ID is undefined");
+      }
+  
       setImageStorageId(storageId);
-
-      const imageUrl = await api.files.getImageUrl(storageId);
       setImage(imageUrl);
-      console.log('image', imageUrl);
+  
       setIsImageLoading(false);
       toast({
         title: "Thumbnail generated successfully",
@@ -54,9 +55,7 @@ const GenerateThumbnail = ({ setImage, setImageStorageId, image, imagePrompt, se
       setIsImageLoading(false);
     }
   };
-
-
-
+  
   const generateImage = async () => {
     setIsImageLoading(true);
     try {

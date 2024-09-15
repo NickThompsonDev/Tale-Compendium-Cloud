@@ -28,9 +28,9 @@ export const uploadFile = async (file: File) => {
       },
     });
 
-    const { imageUrl } = response.data;
-    console.log("uploadFile response", imageUrl);
-    return imageUrl;
+    console.log("upload response", response.data);
+    // Directly return the whole response, not just the imageUrl
+    return response.data; // { id, filename, imageUrl }
   } catch (error) {
     console.error('Error uploading file:', error);
     throw error;
