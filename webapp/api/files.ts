@@ -2,11 +2,14 @@ import axiosInstance from './axiosInstance';
 
 // Retrieve image URL based on storage ID
 export const getImageUrl = async (storageId: number) => {
+  if (!storageId) {
+    console.error("Invalid storage ID:", storageId);
+    throw new Error('Storage ID is undefined or invalid.');
+  }
+
   try {
     const response = await axiosInstance.get(`/storage/${storageId}`);
-    const imageUrl = response.request.responseURL; // The final redirect URL after following all redirects
-    console.log("getImageUrl", imageUrl); // Log to check the correct URL
-    return imageUrl;
+    return response.request.responseURL;
   } catch (error) {
     console.error('Error retrieving image URL:', error);
     throw error;
@@ -25,8 +28,8 @@ export const uploadFile = async (file: File) => {
       },
     });
 
-    const { imageUrl } = response.data; // Backend should return the imageUrl directly
-    console.log("uploadFile response", imageUrl); // Log to check if the correct image URL is returned
+    const { imageUrl } = response.data;
+    console.log("uploadFile response", imageUrl);
     return imageUrl;
   } catch (error) {
     console.error('Error uploading file:', error);
