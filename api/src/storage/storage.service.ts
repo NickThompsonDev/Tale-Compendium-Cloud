@@ -51,8 +51,6 @@ export class StorageService {
         },
       });
 
-      await file.makePublic();
-
       const imageUrl = `https://storage.googleapis.com/${this.bucketName}/${filename}`;
 
       // Save the file information to PostgreSQL
