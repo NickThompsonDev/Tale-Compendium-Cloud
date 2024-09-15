@@ -16,6 +16,9 @@ export class StorageService {
     private storageRepository: Repository<StorageEntity>,
   ) {
     try {
+      this.logger.log(
+        `GOOGLE_APPLICATION_CREDENTIALS: ${process.env.GOOGLE_APPLICATION_CREDENTIALS}`,
+      );
       this.storage = new Storage();
       this.logger.log('Google Cloud Storage initialized successfully');
     } catch (error) {
