@@ -459,12 +459,16 @@ resource "google_service_account_key" "api_sa_key" {
 resource "kubernetes_secret" "gcs_sa_key" {
   metadata {
     name      = "gcs-sa-key"
-    namespace = "default"  # Ensure this matches your application's namespace
+    namespace = "default"
   }
 
   data = {
-    # Base64 encode the GCS key and store it as a Kubernetes Secret
     "key.json" = base64encode(google_service_account_key.api_sa_key.private_key)
+  }
+
+  # Force pod restart on secret change
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
