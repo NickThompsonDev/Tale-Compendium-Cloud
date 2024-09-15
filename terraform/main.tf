@@ -16,10 +16,10 @@ provider "helm" {
 
 # Install NGINX Ingress Controller with Helm
 resource "helm_release" "nginx_ingress" {
-  name       = "nginx-ingress"
-  repository = "https://kubernetes.github.io/ingress-nginx"
-  chart      = "ingress-nginx"
-  namespace  = "ingress-nginx"
+  name             = "nginx-ingress"
+  repository       = "https://kubernetes.github.io/ingress-nginx"
+  chart            = "ingress-nginx"
+  namespace        = "ingress-nginx"
   create_namespace = true
 
   set {
@@ -49,10 +49,10 @@ resource "helm_release" "nginx_ingress" {
 }
 
 resource "helm_release" "cert_manager" {
-  name       = "cert-manager"
-  repository = "https://charts.jetstack.io"
-  chart      = "cert-manager"
-  namespace  = "cert-manager"
+  name             = "cert-manager"
+  repository       = "https://charts.jetstack.io"
+  chart            = "cert-manager"
+  namespace        = "cert-manager"
   create_namespace = true
 
   set {
@@ -133,7 +133,7 @@ resource "kubernetes_manifest" "webapp_ingress" {
       "name"      = "webapp-ingress"
       "namespace" = "default"
       "annotations" = {
-        "kubernetes.io/ingress.class" = "nginx"
+        "kubernetes.io/ingress.class"    = "nginx"
         "cert-manager.io/cluster-issuer" = "letsencrypt-prod"
       }
     }
@@ -145,7 +145,7 @@ resource "kubernetes_manifest" "webapp_ingress" {
             {
               "path"     = "/api"
               "pathType" = "Prefix"
-              "backend"  = {
+              "backend" = {
                 "service" = {
                   "name" = "api-service"
                   "port" = {
@@ -157,7 +157,7 @@ resource "kubernetes_manifest" "webapp_ingress" {
             {
               "path"     = "/"
               "pathType" = "Prefix"
-              "backend"  = {
+              "backend" = {
                 "service" = {
                   "name" = "webapp-service"
                   "port" = {
@@ -240,8 +240,55 @@ resource "kubernetes_deployment" "webapp" {
   }
 }
 
+resource "google_storage_bucket" "talecompendium_images" {
+  name                        = var.gcs_bucket_name
+  location                    = var.region
+  uniform_bucket_level_access = true
+
+  cors {
+    origin          = ["https://talecompendiumcloud.com"]
+    method          = ["GET", "HEAD", "OPTIONS"]
+    response_header = ["Content-Type", "Access-Control-Allow-Origin"]
+    max_age_seconds = 3600
+  }
+}
+
+resource "google_service_account" "api_service_account" {
+  account_id   = "api-sa"
+  display_name = "API Service Account"
+}
+
+resource "google_storage_bucket_iam_member" "storage_object_creator" {
+  bucket = google_storage_bucket.talecompendium_images.name
+  role   = "roles/storage.objectCreator"
+  member = "serviceAccount:${google_service_account.api_service_account.email}"
+}
+
+resource "google_service_account_key" "api_sa_key" {
+  service_account_id = google_service_account.api_service_account.id
+  private_key_type   = "TYPE_GOOGLE_CREDENTIALS_FILE"
+}
+
+# Create Kubernetes secret for the GCS service account
+resource "kubernetes_secret" "gcs_sa_key" {
+  metadata {
+    name      = "gcs-sa-key"
+    namespace = "default"
+  }
+
+  data = {
+    "key.json" = base64encode(google_service_account_key.api_sa_key.private_key)
+  }
+
+  type = "Opaque"
+}
+
+
+
 # Kubernetes deployment for API
 resource "kubernetes_deployment" "api" {
+  depends_on = [kubernetes_secret.gcs_sa_key] # Ensure this is here
+
   metadata {
     name = "api-deployment"
   }
@@ -303,7 +350,7 @@ resource "kubernetes_deployment" "api" {
 
           # Mount the GCS service account key as a volume
           volume_mount {
-            name      = "gcs-sa-key-volume"
+            name       = "gcs-sa-key-volume"
             mount_path = "/etc/gcs-sa"
             read_only  = true
           }
@@ -324,6 +371,14 @@ resource "kubernetes_deployment" "api" {
         }
       }
     }
+  }
+}
+
+resource "null_resource" "restart_api_deployment" {
+  depends_on = [kubernetes_secret.gcs_sa_key]
+
+  provisioner "local-exec" {
+    command = "kubectl rollout restart deployment api-deployment --namespace default"
   }
 }
 
@@ -436,41 +491,5 @@ resource "kubernetes_service" "database" {
   }
 }
 
-resource "google_storage_bucket" "talecompendium_images" {
-  name     = var.gcs_bucket_name
-  location = var.region
-  uniform_bucket_level_access = true
-}
 
-resource "google_service_account" "api_service_account" {
-  account_id   = "api-sa"
-  display_name = "API Service Account"
-}
-
-resource "google_storage_bucket_iam_member" "storage_object_creator" {
-  bucket = google_storage_bucket.talecompendium_images.name
-  role   = "roles/storage.objectCreator"
-  member = "serviceAccount:${google_service_account.api_service_account.email}"
-}
-
-resource "google_service_account_key" "api_sa_key" {
-  service_account_id = google_service_account.api_service_account.id
-  private_key_type   = "TYPE_GOOGLE_CREDENTIALS_FILE"
-}
-
-resource "kubernetes_secret" "gcs_sa_key" {
-  metadata {
-    name      = "gcs-sa-key"
-    namespace = "default"
-  }
-
-  data = {
-    "key.json" = base64encode(google_service_account_key.api_sa_key.private_key)
-  }
-
-  # Force pod restart on secret change
-  lifecycle {
-    create_before_destroy = true
-  }
-}
 
