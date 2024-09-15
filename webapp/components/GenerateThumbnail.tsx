@@ -36,6 +36,7 @@ const GenerateThumbnail = ({ setImage, setImageStorageId, image, imagePrompt, se
       console.log('Detected MIME type:', mime);
 
       const uploaded = await api.files.uploadFile(file);
+      console.log('uploadedresponse', uploaded);
       const storageId = uploaded.id;
 
       setImageStorageId(storageId);

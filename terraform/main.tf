@@ -266,6 +266,8 @@ resource "kubernetes_deployment" "api" {
           port {
             container_port = 5000
           }
+
+          # Other environment variables
           env {
             name  = "DATABASE_HOST"
             value = var.database_host
@@ -294,7 +296,6 @@ resource "kubernetes_deployment" "api" {
             name  = "GCS_BUCKET_NAME"
             value = var.gcs_bucket_name
           }
-
           env {
             name  = "GCP_PROJECT_ID"
             value = var.project_id
@@ -324,7 +325,16 @@ resource "kubernetes_deployment" "api" {
       }
     }
   }
+
+  # Lifecycle block to ensure proper deployment restart
+  lifecycle {
+    ignore_changes = [
+      metadata[0].annotations["kubectl.kubernetes.io/last-applied-configuration"]
+    ]
+    create_before_destroy = true  # Ensure deployment restarts on secret change
+  }
 }
+
 
 # Kubernetes deployment for database
 resource "kubernetes_deployment" "database" {
