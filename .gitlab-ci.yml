@@ -9,7 +9,6 @@ stages:
 
 image: google/cloud-sdk:latest
 
-
 # Variables to be used for both dev and main environments
 variables:
   GOOGLE_PROJECT_ID: "nodal-clock-433208-b4"
@@ -27,19 +26,16 @@ variables:
   TF_VAR_clerk_webhook_secret: $CLERK_WEBHOOK_SECRET
 
 before_script:
-  # Use the Google Cloud SDK to authenticate
+  # Authenticate to Google Cloud using the service account key from GitLab
   - echo "$GCP_SERVICE_ACCOUNT_KEY" > ${CI_PROJECT_DIR}/gcp-key.json
   - gcloud auth activate-service-account --key-file=${CI_PROJECT_DIR}/gcp-key.json
-  - gcloud config set project $GOOGLE_PROJECT_ID
-  # Login to GCR (Google Container Registry) to push images
+  - gcloud config set project $GCP_PROJECT_ID
+  # Docker login to Google Container Registry
   - gcloud auth configure-docker
 
 
 # Shared template for building Docker images
 .build_template:
-  image: docker:19.03
-  services:
-    - docker:19.03-dind
   script:
     - echo "Building Docker images for $CI_ENVIRONMENT_NAME environment"
     - docker build \
