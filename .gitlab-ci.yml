@@ -29,8 +29,11 @@ variables:
   TF_VAR_clerk_webhook_secret: $CLERK_WEBHOOK_SECRET
 
 before_script:
-  - echo $GCP_SERVICE_ACCOUNT_KEY | base64 -d > ${CI_PROJECT_DIR}/gcp-key.json
+  # Use the Google Cloud SDK to authenticate
+  - echo "$GCP_SERVICE_ACCOUNT_KEY" > ${CI_PROJECT_DIR}/gcp-key.json
   - gcloud auth activate-service-account --key-file=${CI_PROJECT_DIR}/gcp-key.json
+  - gcloud config set project $GOOGLE_PROJECT_ID
+  # Login to GCR (Google Container Registry) to push images
   - gcloud auth configure-docker
 
 
