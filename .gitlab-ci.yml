@@ -25,7 +25,7 @@ variables:
 before_script:
   - apt-get update && apt-get install -y curl unzip
   - curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.2/terraform_1.5.2_linux_amd64.zip
-  - unzip terraform.zip
+  - unzip -o terraform.zip
   - mv terraform /usr/local/bin/terraform
   - docker login -u _json_key -p "$GCP_SERVICE_ACCOUNT_KEY" https://gcr.io
 
