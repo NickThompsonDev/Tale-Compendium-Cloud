@@ -93,12 +93,13 @@ jobs:
 
       # Terraform steps to deploy to Kubernetes
       - name: Terraform Init
-        working-directory: terraform/main
+        working-directory: terraform/${{ env.NAMESPACE }}
         run: terraform init -upgrade
 
       - name: Terraform Apply
-        working-directory: terraform/main
+        working-directory: terraform/${{ env.NAMESPACE }}
         run: terraform apply -auto-approve -var namespace=${{ env.NAMESPACE }}
+
 
       # Post-deployment vulnerability scan using Trivy directly (on Kubernetes)
       - name: Post-Deployment Vulnerability Scan with Trivy
