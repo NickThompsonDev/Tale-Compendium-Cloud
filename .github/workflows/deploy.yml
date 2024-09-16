@@ -1,0 +1,136 @@
+name: Deploy to GKE with DevSecOps
+
+on:
+  push:
+    branches:
+      - main
+      - dev  # Trigger for both main and dev branches
+
+jobs:
+  deploy-gke:
+    runs-on: ubuntu-latest
+    env:
+      TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
+      TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+      TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      TF_VAR_clerk_secret_key: ${{ secrets.CLERK_SECRET_KEY }}
+      TF_VAR_clerk_sign_in_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
+      TF_VAR_clerk_sign_up_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
+      TF_VAR_clerk_webhook_secret: ${{ secrets.CLERK_WEBHOOK_SECRET }}
+      TF_VAR_database_host: "database-service.default.svc.cluster.local"
+      TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
+      TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+      TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+      TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+      TF_VAR_next_public_api_url: "https://talecompendiumcloud.com/api"
+      TF_VAR_next_public_webapp_url: "https://talecompendiumcloud.com"
+      NAMESPACE: ${{ github.ref == 'refs/heads/main' && 'main' || 'dev' }}  # Choose namespace based on the branch
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Security scan for dependencies (example using Trivy)
+      - name: Run Trivy Vulnerability Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'all'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'  # Fail the pipeline on critical vulnerabilities
+
+      # Secret scanning (e.g., using GitLeaks)
+      - name: Secret Scanning with GitLeaks
+        uses: zricethezav/gitleaks-action@master
+        with:
+          config-path: .gitleaks.toml  # Make sure you have the appropriate config for your project
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          install_components: kubectl
+
+      - name: Configure kubectl to use the GKE cluster
+        run: |
+          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_REGION }} --project ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Authenticate Docker to GCR
+        run: gcloud auth configure-docker
+
+      - name: Build and Push API Docker Image
+        run: |
+          docker build \
+            --no-cache \
+            --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }} \
+            --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
+            --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }} \
+            --build-arg CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} \
+            --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+            --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
+            --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
+            --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
+            --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
+            --build-arg NEXT_PUBLIC_WEBAPP_URL=${{ secrets.NEXT_PUBLIC_WEBAPP_URL }} \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest \
+            -f ./api/Dockerfile ./api
+
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
+
+      - name: Build and Push Webapp Docker Image
+        run: |
+          docker build \
+            --no-cache \
+            --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }} \
+            --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
+            --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }} \
+            --build-arg CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} \
+            --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+            --build-arg DATABASE_USER=${{ secrets.DATABASE_USER }} \
+            --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
+            --build-arg DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
+            --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
+            --build-arg NEXT_PUBLIC_WEBAPP_URL=${{ secrets.NEXT_PUBLIC_WEBAPP_URL }} \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest \
+            -f ./webapp/Dockerfile ./webapp
+
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest
+
+      # Terraform steps to deploy to Kubernetes
+      - name: Terraform Init
+        working-directory: terraform/main
+        run: terraform init -upgrade
+
+      - name: Terraform Apply
+        working-directory: terraform/main
+        run: terraform apply -auto-approve -var namespace=${{ env.NAMESPACE }}
+
+      # Post-deployment vulnerability scan (optional)
+      - name: Post-Deployment Vulnerability Scan with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'k8s'
+          namespace: ${{ env.NAMESPACE }}
+          severity: 'CRITICAL,HIGH'
+
+      # Cleanup old Docker images in GCR for webapp
+      - name: Cleanup old Docker images in GCR (for webapp)
+        run: |
+          gcloud container images list-tags gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp --format='get(digest)' --filter='NOT tags:(latest)' | while read digest; do
+            gcloud container images delete gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp@$digest --quiet --force-delete-tags;
+          done
+
+      # Cleanup old Docker images in GCR for API
+      - name: Cleanup old Docker images in GCR (for api)
+        run: |
+          gcloud container images list-tags gcr.io/${{ secrets.GCP_PROJECT_ID }}/api --format='get(digest)' --filter='NOT tags:(latest)' | while read digest; do
+            gcloud container images delete gcr.io/${{ secrets.GCP_PROJECT_ID }}/api@$digest --quiet --force-delete-tags;
+          done
