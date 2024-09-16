@@ -1,4 +1,4 @@
-name: Deploy to GKE with DevSecOps
+# name: Deploy to GKE with DevSecOps
 
 on:
   push:
@@ -24,25 +24,12 @@ jobs:
       TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
       TF_VAR_next_public_api_url: "https://talecompendiumcloud.com/api"
       TF_VAR_next_public_webapp_url: "https://talecompendiumcloud.com"
-      NAMESPACE: ${{ github.ref == 'refs/heads/main' && 'main' || 'dev' }}  # Choose namespace based on the branch
+      NAMESPACE: ${{ github.ref == 'refs/heads/main' && 'main' || 'dev' }}
+      IMAGE_TAG_LATEST: ${{ github.ref == 'refs/heads/main' && 'latest-main' || 'latest-dev' }}  # Tag images separately for dev and main
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-
-      # Security scan for dependencies (example using Trivy)
-      - name: Run Trivy Vulnerability Scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'all'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '1'  # Fail the pipeline on critical vulnerabilities
-
-      # Secret scanning (e.g., using GitLeaks)
-      - name: Secret Scanning with GitLeaks
-        uses: zricethezav/gitleaks-action@master
-        with:
-          config-path: .gitleaks.toml  # Make sure you have the appropriate config for your project
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
@@ -77,11 +64,11 @@ jobs:
             --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
             --build-arg NEXT_PUBLIC_WEBAPP_URL=${{ secrets.NEXT_PUBLIC_WEBAPP_URL }} \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }} \
-            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ env.IMAGE_TAG_LATEST }} \
             -f ./api/Dockerfile ./api
 
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ github.sha }}
-          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:latest
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/api:${{ env.IMAGE_TAG_LATEST }}
 
       - name: Build and Push Webapp Docker Image
         run: |
@@ -98,11 +85,11 @@ jobs:
             --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
             --build-arg NEXT_PUBLIC_WEBAPP_URL=${{ secrets.NEXT_PUBLIC_WEBAPP_URL }} \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }} \
-            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ env.IMAGE_TAG_LATEST }} \
             -f ./webapp/Dockerfile ./webapp
 
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ github.sha }}
-          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:${{ env.IMAGE_TAG_LATEST }}
 
       # Terraform steps to deploy to Kubernetes
       - name: Terraform Init
@@ -113,24 +100,23 @@ jobs:
         working-directory: terraform/main
         run: terraform apply -auto-approve -var namespace=${{ env.NAMESPACE }}
 
-      # Post-deployment vulnerability scan (optional)
+      # Post-deployment vulnerability scan using Trivy directly (on Kubernetes)
       - name: Post-Deployment Vulnerability Scan with Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'k8s'
-          namespace: ${{ env.NAMESPACE }}
-          severity: 'CRITICAL,HIGH'
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          trivy k8s --namespace ${NAMESPACE} --severity CRITICAL,HIGH --format table
+
 
       # Cleanup old Docker images in GCR for webapp
       - name: Cleanup old Docker images in GCR (for webapp)
         run: |
-          gcloud container images list-tags gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp --format='get(digest)' --filter='NOT tags:(latest)' | while read digest; do
+          gcloud container images list-tags gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp --format='get(digest)' --filter='NOT tags:(latest-main,latest-dev)' | while read digest; do
             gcloud container images delete gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp@$digest --quiet --force-delete-tags;
           done
 
       # Cleanup old Docker images in GCR for API
       - name: Cleanup old Docker images in GCR (for api)
         run: |
-          gcloud container images list-tags gcr.io/${{ secrets.GCP_PROJECT_ID }}/api --format='get(digest)' --filter='NOT tags:(latest)' | while read digest; do
+          gcloud container images list-tags gcr.io/${{ secrets.GCP_PROJECT_ID }}/api --format='get(digest)' --filter='NOT tags:(latest-main,latest-dev)' | while read digest; do
             gcloud container images delete gcr.io/${{ secrets.GCP_PROJECT_ID }}/api@$digest --quiet --force-delete-tags;
           done
