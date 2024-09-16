@@ -26,6 +26,7 @@ variables:
   TF_VAR_clerk_webhook_secret: $CLERK_WEBHOOK_SECRET
 
 before_script:
+  - apt-get update && apt-get install -y jq
   # Authenticate to Google Cloud using the service account key from GitLab
   - echo "$GCP_SERVICE_ACCOUNT_KEY" | jq -r '.private_key_data' > ${CI_PROJECT_DIR}/gcp-key.json
   - gcloud auth activate-service-account --key-file=${CI_PROJECT_DIR}/gcp-key.json
