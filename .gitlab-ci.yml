@@ -29,10 +29,10 @@ variables:
   TF_VAR_clerk_webhook_secret: $CLERK_WEBHOOK_SECRET
 
 before_script:
-  # Decode and authenticate with Google Cloud
-  - echo $GCP_SERVICE_ACCOUNT_KEY | base64 --decode > ${CI_PROJECT_DIR}/gcp-key.json
+  - echo $GCP_SERVICE_ACCOUNT_KEY | base64 -d > ${CI_PROJECT_DIR}/gcp-key.json
   - gcloud auth activate-service-account --key-file=${CI_PROJECT_DIR}/gcp-key.json
   - gcloud auth configure-docker
+
 
 # Shared template for building Docker images
 .build_template:
