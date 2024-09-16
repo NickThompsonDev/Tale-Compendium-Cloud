@@ -7,10 +7,8 @@ stages:
   - post-deploy-security-scan
   - cleanup
 
-# Use the docker image to build and push images
-image: docker:19.03
-services:
-  - docker:19.03-dind
+image: google/cloud-sdk:latest
+
 
 # Variables to be used for both dev and main environments
 variables:
@@ -39,6 +37,9 @@ before_script:
 
 # Shared template for building Docker images
 .build_template:
+  image: docker:19.03
+  services:
+    - docker:19.03-dind
   script:
     - echo "Building Docker images for $CI_ENVIRONMENT_NAME environment"
     - docker build \
