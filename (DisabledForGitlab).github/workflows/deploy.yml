@@ -90,7 +90,7 @@
 #           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/webapp:latest
 
 #       - name: Terraform Init
-#         working-directory: terraform
+#         working-directory: terraform/main
 #         run: |
 #           terraform init -upgrade
 
@@ -113,7 +113,7 @@
 #           terraform import google_service_account.api_service_account projects/nodal-clock-433208-b4/serviceAccounts/api-sa@nodal-clock-433208-b4.iam.gserviceaccount.com || echo "Service account already managed, skipping import"
 
 #       - name: Terraform Apply
-#         working-directory: terraform
+#         working-directory: terraform/main
 #         run: |
 #           # Attempt terraform apply
 #           terraform apply -auto-approve || { 

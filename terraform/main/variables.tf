@@ -140,3 +140,28 @@ variable "gcs_bucket_name" {
   type        = string
   default     = "talecompendium-images"
 }
+
+variable "google_credentials_dev" {
+  description = "The contents of the GCP service account JSON file for dev"
+  type        = string
+  sensitive   = true
+}
+
+variable "google_credentials_main" {
+  description = "The contents of the GCP service account JSON file for main"
+  type        = string
+  sensitive   = true
+}
+
+variable "environment" {
+  description = "The environment to deploy to (dev or main)"
+  type        = string
+  default     = "dev"
+}
+
+variable "google_zone" {
+  description = "The zone"
+  type        = string
+  default     = "us-east1-a"
+}
+
