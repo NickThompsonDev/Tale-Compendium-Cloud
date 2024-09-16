@@ -35,14 +35,12 @@ before_script:
   - export TF_VAR_google_credentials=$(cat ${CI_PROJECT_DIR}/gcp-key.json)
   # Docker login to Google Container Registry
   - gcloud auth configure-docker
-  - docker buildx uninstall
 
 
 # Shared template for building Docker images
 .build_template:
   script:
-    - docker build \
-        --no-cache \
+    - docker build --no-cache \
         --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
         --build-arg STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY \
         --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY \
@@ -55,11 +53,9 @@ before_script:
         --build-arg NEXT_PUBLIC_WEBAPP_URL=$NEXT_PUBLIC_WEBAPP_URL \
         -t gcr.io/$GOOGLE_PROJECT_ID/api-$CI_ENVIRONMENT_NAME:${CI_COMMIT_SHORT_SHA} \
         -t gcr.io/$GOOGLE_PROJECT_ID/api-$CI_ENVIRONMENT_NAME:latest \
-        -f ./api/Dockerfile \
-        ./api
+        -f ./api/Dockerfile ./api
 
-    - docker build \
-        --no-cache \
+    - docker build --no-cache \
         --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
         --build-arg STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY \
         --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY \
@@ -72,8 +68,7 @@ before_script:
         --build-arg NEXT_PUBLIC_WEBAPP_URL=$NEXT_PUBLIC_WEBAPP_URL \
         -t gcr.io/$GOOGLE_PROJECT_ID/webapp-$CI_ENVIRONMENT_NAME:${CI_COMMIT_SHORT_SHA} \
         -t gcr.io/$GOOGLE_PROJECT_ID/webapp-$CI_ENVIRONMENT_NAME:latest \
-        -f ./webapp/Dockerfile \
-        ./webapp
+        -f ./webapp/Dockerfile ./webapp
 
 
     # Push images to GCR
