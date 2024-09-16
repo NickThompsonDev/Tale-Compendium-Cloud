@@ -28,12 +28,6 @@ variable "node_machine_type" {
   default     = "e2-medium"
 }
 
-variable "google_credentials" {
-  description = "The contents of the GCP service account JSON file"
-  type        = string
-  sensitive   = true
-}
-
 variable "docker_image_tag" {
   description = "Tag for the Docker image"
   type        = string
