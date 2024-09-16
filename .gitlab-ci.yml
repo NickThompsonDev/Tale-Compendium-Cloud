@@ -40,6 +40,7 @@ before_script:
 # Shared template for building Docker images
 .build_template:
   script:
+    - docker buildx create --use
     - docker buildx build --no-cache \
         --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
         --build-arg STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY \
