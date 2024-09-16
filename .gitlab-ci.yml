@@ -7,9 +7,12 @@ stages:
   - post-deploy-security-scan
   - cleanup
 
-# Use the official Terraform image
-image: hashicorp/terraform:1.5.2
+# Use the docker image to build and push images
+image: docker:19.03
+services:
+  - docker:19.03-dind
 
+# Variables to be used for both dev and main environments
 variables:
   GOOGLE_PROJECT_ID: "nodal-clock-433208-b4"
   GOOGLE_REGION: "us-east1"
@@ -27,14 +30,11 @@ variables:
 
 before_script:
   - docker login -u _json_key -p "$GCP_SERVICE_ACCOUNT_KEY" https://gcr.io
-  
-# Job for the dev branch (build, test, deploy to dev)
-build_dev:
-  stage: build
-  only:
-    - dev
+
+# Shared template for building Docker images
+.build_template:
   script:
-    - echo "Building Docker images for dev environment"
+    - echo "Building Docker images for $CI_ENVIRONMENT_NAME environment"
     - docker build \
         --no-cache \
         --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
@@ -45,10 +45,10 @@ build_dev:
         --build-arg DATABASE_USER=$DATABASE_USER \
         --build-arg DATABASE_PASSWORD=$DATABASE_PASSWORD \
         --build-arg DATABASE_NAME=$DATABASE_NAME \
-        --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL_DEV \
-        --build-arg NEXT_PUBLIC_WEBAPP_URL=$NEXT_PUBLIC_WEBAPP_URL_DEV \
-        -t gcr.io/$GOOGLE_PROJECT_ID/api-dev:${CI_COMMIT_SHORT_SHA} \
-        -t gcr.io/$GOOGLE_PROJECT_ID/api-dev:latest \
+        --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+        --build-arg NEXT_PUBLIC_WEBAPP_URL=$NEXT_PUBLIC_WEBAPP_URL \
+        -t gcr.io/$GOOGLE_PROJECT_ID/api-$CI_ENVIRONMENT_NAME:${CI_COMMIT_SHORT_SHA} \
+        -t gcr.io/$GOOGLE_PROJECT_ID/api-$CI_ENVIRONMENT_NAME:latest \
         -f ./api/Dockerfile ./api
 
     - docker build \
@@ -61,119 +61,88 @@ build_dev:
         --build-arg DATABASE_USER=$DATABASE_USER \
         --build-arg DATABASE_PASSWORD=$DATABASE_PASSWORD \
         --build-arg DATABASE_NAME=$DATABASE_NAME \
-        --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL_DEV \
-        --build-arg NEXT_PUBLIC_WEBAPP_URL=$NEXT_PUBLIC_WEBAPP_URL_DEV \
-        -t gcr.io/$GOOGLE_PROJECT_ID/webapp-dev:${CI_COMMIT_SHORT_SHA} \
-        -t gcr.io/$GOOGLE_PROJECT_ID/webapp-dev:latest \
+        --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+        --build-arg NEXT_PUBLIC_WEBAPP_URL=$NEXT_PUBLIC_WEBAPP_URL \
+        -t gcr.io/$GOOGLE_PROJECT_ID/webapp-$CI_ENVIRONMENT_NAME:${CI_COMMIT_SHORT_SHA} \
+        -t gcr.io/$GOOGLE_PROJECT_ID/webapp-$CI_ENVIRONMENT_NAME:latest \
         -f ./webapp/Dockerfile ./webapp
 
     # Push images to GCR
-    - docker push gcr.io/$GOOGLE_PROJECT_ID/api-dev:${CI_COMMIT_SHORT_SHA}
-    - docker push gcr.io/$GOOGLE_PROJECT_ID/api-dev:latest
-    - docker push gcr.io/$GOOGLE_PROJECT_ID/webapp-dev:${CI_COMMIT_SHORT_SHA}
-    - docker push gcr.io/$GOOGLE_PROJECT_ID/webapp-dev:latest
+    - docker push gcr.io/$GOOGLE_PROJECT_ID/api-$CI_ENVIRONMENT_NAME:${CI_COMMIT_SHORT_SHA}
+    - docker push gcr.io/$GOOGLE_PROJECT_ID/api-$CI_ENVIRONMENT_NAME:latest
+    - docker push gcr.io/$GOOGLE_PROJECT_ID/webapp-$CI_ENVIRONMENT_NAME:${CI_COMMIT_SHORT_SHA}
+    - docker push gcr.io/$GOOGLE_PROJECT_ID/webapp-$CI_ENVIRONMENT_NAME:latest
 
-test_dev:
-  stage: test
+# Job for the dev branch
+build_dev:
+  extends: .build_template
+  stage: build
   only:
     - dev
-  script:
-    - echo "Running tests for dev"
-    # Add testing logic here (unit tests, integration tests, etc.)
-    - echo "Tests Passed"
+  variables:
+    NEXT_PUBLIC_API_URL: "https://dev.talecompendiumcloud.com/api"
+    NEXT_PUBLIC_WEBAPP_URL: "https://dev.talecompendiumcloud.com"
+  environment:
+    name: dev
 
-security_scan_dev:
-  stage: post-build-security-scan
+# Job for the main branch
+build_main:
+  extends: .build_template
+  stage: build
   only:
-    - dev
-  script:
-    - echo "Running security scans on the dev environment"
-    # Placeholder for future DevSecOps implementation (e.g., SAST, DAST, etc.)
-    - echo "Security Scans Completed"
+    - main
+  variables:
+    NEXT_PUBLIC_API_URL: "https://talecompendiumcloud.com/api"
+    NEXT_PUBLIC_WEBAPP_URL: "https://talecompendiumcloud.com"
+  environment:
+    name: main
 
-deploy_dev:
-  stage: deploy
-  only:
-    - dev
+# Shared template for Terraform imports and apply
+.deploy_template:
+  image: hashicorp/terraform:1.5.2
   script:
-    - echo "Deploying full environment to dev"
-    - cd terraform/dev  # This is where we reference the dev-specific directory
-    - terraform init
-    - terraform apply -auto-approve -var environment=dev || { 
+    - echo "Deploying to $CI_ENVIRONMENT_NAME environment"
+    - cd terraform/$CI_ENVIRONMENT_NAME
+    - terraform init -input=false
+    - terraform import kubernetes_deployment.webapp default/webapp-deployment || echo "webapp-deployment does not exist, skipping import"
+    - terraform import kubernetes_deployment.api default/api-deployment || echo "api-deployment does not exist, skipping import"
+    - terraform import kubernetes_deployment.database default/database-deployment || echo "database-deployment does not exist, skipping import"
+    - terraform import kubernetes_service.webapp default/webapp-service || echo "webapp-service does not exist, skipping import"
+    - terraform import kubernetes_service.api default/api-service || echo "api-service does not exist, skipping import"
+    - terraform import kubernetes_service.database default/database-service || echo "database-service does not exist, skipping import"
+    - terraform import helm_release.cert_manager cert-manager/cert-manager || echo "cert-manager does not exist, skipping import"
+    - terraform import helm_release.nginx_ingress ingress-nginx/nginx-ingress || echo "nginx-ingress does not exist, skipping import"
+    - terraform apply -auto-approve -var environment=$CI_ENVIRONMENT_NAME || { 
         echo "Deployment failed, attempting to destroy resources..."; 
         terraform destroy -auto-approve -target='!kubernetes_deployment.database';
         exit 1; 
       }
+
+# Deploy to dev environment
+deploy_dev:
+  extends: .deploy_template
+  stage: deploy
+  only:
+    - dev
   environment:
     name: dev
     url: https://dev.talecompendiumcloud.com
   variables:
     GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
 
-# Job to run on the main branch (build, test, deploy to main)
-build_main:
-  stage: build
-  only:
-    - main
-  script:
-    - echo "Building Docker images for main environment"
-    - docker build \
-        --no-cache \
-        --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
-        --build-arg STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY \
-        --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY \
-        --build-arg CLERK_SECRET_KEY=$CLERK_SECRET_KEY \
-        --build-arg OPENAI_API_KEY=$OPENAI_API_KEY \
-        --build-arg DATABASE_USER=$DATABASE_USER \
-        --build-arg DATABASE_PASSWORD=$DATABASE_PASSWORD \
-        --build-arg DATABASE_NAME=$DATABASE_NAME \
-        --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL_MAIN \
-        --build-arg NEXT_PUBLIC_WEBAPP_URL=$NEXT_PUBLIC_WEBAPP_URL_MAIN \
-        -t gcr.io/$GOOGLE_PROJECT_ID/api-main:${CI_COMMIT_SHORT_SHA} \
-        -t gcr.io/$GOOGLE_PROJECT_ID/api-main:latest \
-        -f ./api/Dockerfile ./api
-
-    - docker build \
-        --no-cache \
-        --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
-        --build-arg STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY \
-        --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY \
-        --build-arg CLERK_SECRET_KEY=$CLERK_SECRET_KEY \
-        --build-arg OPENAI_API_KEY=$OPENAI_API_KEY \
-        --build-arg DATABASE_USER=$DATABASE_USER \
-        --build-arg DATABASE_PASSWORD=$DATABASE_PASSWORD \
-        --build-arg DATABASE_NAME=$DATABASE_NAME \
-        --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL_MAIN \
-        --build-arg NEXT_PUBLIC_WEBAPP_URL=$NEXT_PUBLIC_WEBAPP_URL_MAIN \
-        -t gcr.io/$GOOGLE_PROJECT_ID/webapp-main:${CI_COMMIT_SHORT_SHA} \
-        -t gcr.io/$GOOGLE_PROJECT_ID/webapp-main:latest \
-        -f ./webapp/Dockerfile ./webapp
-
-    # Push images to GCR
-    - docker push gcr.io/$GOOGLE_PROJECT_ID/api-main:${CI_COMMIT_SHORT_SHA}
-    - docker push gcr.io/$GOOGLE_PROJECT_ID/api-main:latest
-    - docker push gcr.io/$GOOGLE_PROJECT_ID/webapp-main:${CI_COMMIT_SHORT_SHA}
-    - docker push gcr.io/$GOOGLE_PROJECT_ID/webapp-main:latest
-
+# Deploy to main environment
 deploy_main:
+  extends: .deploy_template
   stage: deploy
   only:
     - main
-  script:
-    - echo "Deploying infrastructure to main"
-    - cd terraform/main
-    - terraform init -input=false
-    - terraform apply -auto-approve -var environment=main || { 
-        echo "Deployment failed, attempting to destroy resources..."; 
-        terraform destroy -auto-approve -target='!kubernetes_deployment.database';
-        exit 1; 
-      }
   environment:
     name: main
     url: https://talecompendiumcloud.com
   variables:
     GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
 
+# Cleanup job for dev
 cleanup_dev:
   stage: cleanup
   only:
@@ -187,6 +156,7 @@ cleanup_dev:
         gcloud container images delete gcr.io/$GOOGLE_PROJECT_ID/api-dev@$digest --quiet --force-delete-tags;
       done
 
+# Cleanup job for main
 cleanup_main:
   stage: cleanup
   only:
