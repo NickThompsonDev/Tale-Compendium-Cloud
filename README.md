@@ -2,7 +2,7 @@
   <table border="0" style="border: none; margin: 0 auto;">
     <tr>
       <td style="border: none; padding: 0; vertical-align: middle;">
-        <img src="public/icons/tclogo.png" alt="Tale Compendium Logo" width="150" height="100%" />
+        <img src="webapp/public/icons/tclogo.png" alt="Tale Compendium Logo" width="150" height="100%" />
       </td>
       <td style="border: none; padding: 0;">
         <h1 style="margin: 0;">Tale Compendium</h1>

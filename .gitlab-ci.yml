@@ -53,7 +53,7 @@ before_script:
         --build-arg NEXT_PUBLIC_WEBAPP_URL=$NEXT_PUBLIC_WEBAPP_URL \
         -t gcr.io/$GOOGLE_PROJECT_ID/api-$CI_ENVIRONMENT_NAME:${CI_COMMIT_SHORT_SHA} \
         -t gcr.io/$GOOGLE_PROJECT_ID/api-$CI_ENVIRONMENT_NAME:latest \
-         -f ./api/Dockerfile \
+        -f ./api/Dockerfile \
         ./api
 
     - docker build \
@@ -72,7 +72,6 @@ before_script:
         -t gcr.io/$GOOGLE_PROJECT_ID/webapp-$CI_ENVIRONMENT_NAME:latest \
         -f ./webapp/Dockerfile \
         ./webapp
-
 
 
     # Push images to GCR
