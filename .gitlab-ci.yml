@@ -35,11 +35,13 @@ before_script:
   - export TF_VAR_google_credentials=$(cat ${CI_PROJECT_DIR}/gcp-key.json)
   # Docker login to Google Container Registry
   - gcloud auth configure-docker
+  - docker buildx uninstall
+
 
 # Shared template for building Docker images
 .build_template:
   script:
-    - docker --build \
+    - docker build \
         --no-cache \
         --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
         --build-arg STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY \
@@ -56,7 +58,7 @@ before_script:
         -f ./api/Dockerfile \
         ./api
 
-    - docker --build \
+    - docker build \
         --no-cache \
         --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
         --build-arg STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY \
