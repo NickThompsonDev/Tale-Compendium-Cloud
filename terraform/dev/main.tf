@@ -19,7 +19,7 @@ resource "helm_release" "nginx_ingress" {
   name             = "nginx-ingress"
   repository       = "https://kubernetes.github.io/ingress-nginx"
   chart            = "ingress-nginx"
-  namespace        = "ingress-nginx"
+  namespace        = "ingress-nginx-dev"
   create_namespace = true
 
   set {
@@ -52,7 +52,7 @@ resource "helm_release" "cert_manager" {
   name             = "cert-manager"
   repository       = "https://charts.jetstack.io"
   chart            = "cert-manager"
-  namespace        = "cert-manager"
+  namespace        = "cert-manager-dev"
   create_namespace = true
 
   set {
@@ -80,7 +80,7 @@ resource "helm_release" "cert_manager" {
 resource "kubernetes_role_binding" "cert_manager_leader_election" {
   metadata {
     name      = "cert-manager-leader-election"
-    namespace = "cert-manager"
+    namespace = "cert-manager-dev"
   }
 
   role_ref {
@@ -92,7 +92,7 @@ resource "kubernetes_role_binding" "cert_manager_leader_election" {
   subject {
     kind      = "ServiceAccount"
     name      = "cert-manager"
-    namespace = "cert-manager"
+    namespace = "cert-manager-dev"
   }
 }
 
@@ -130,8 +130,8 @@ resource "kubernetes_manifest" "webapp_ingress" {
     "apiVersion" = "networking.k8s.io/v1"
     "kind"       = "Ingress"
     "metadata" = {
-      "name"      = "webapp-ingress"
-      "namespace" = "default"
+      "name"      = "webapp-ingress-dev"
+      "namespace" = "dev"
       "annotations" = {
         "kubernetes.io/ingress.class"    = "nginx"
         "cert-manager.io/cluster-issuer" = "letsencrypt-prod"
@@ -273,7 +273,7 @@ resource "google_service_account_key" "api_sa_key" {
 resource "kubernetes_secret" "gcs_sa_key" {
   metadata {
     name      = "gcs-sa-key"
-    namespace = "default"
+    namespace = "dev"
   }
 
   data = {
@@ -378,7 +378,7 @@ resource "null_resource" "restart_api_deployment" {
   depends_on = [kubernetes_secret.gcs_sa_key]
 
   provisioner "local-exec" {
-    command = "kubectl rollout restart deployment api-deployment --namespace default"
+    command = "kubectl rollout restart deployment api-deployment --namespace dev"
   }
 }
 

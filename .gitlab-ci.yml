@@ -27,17 +27,18 @@ variables:
 
 before_script:
   - apt-get update && apt-get install -y jq
-  # Authenticate to Google Cloud using the service account key from GitLab
+  # Extract and set Google Cloud service account credentials
   - echo "$GCP_SERVICE_ACCOUNT_KEY" | jq -r '.private_key_data' > ${CI_PROJECT_DIR}/gcp-key.json
   - gcloud auth activate-service-account --key-file=${CI_PROJECT_DIR}/gcp-key.json
   - gcloud config set project $GOOGLE_PROJECT_ID
+  # Set GOOGLE_CREDENTIALS environment variable for Terraform
+  - export TF_VAR_google_credentials=$(cat ${CI_PROJECT_DIR}/gcp-key.json)
   # Docker login to Google Container Registry
   - gcloud auth configure-docker
 
 # Shared template for building Docker images
 .build_template:
   script:
-    - echo "Building Docker images for $CI_ENVIRONMENT_NAME environment"
     - docker build \
         --no-cache \
         --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
@@ -69,6 +70,8 @@ before_script:
         -t gcr.io/$GOOGLE_PROJECT_ID/webapp-$CI_ENVIRONMENT_NAME:${CI_COMMIT_SHORT_SHA} \
         -t gcr.io/$GOOGLE_PROJECT_ID/webapp-$CI_ENVIRONMENT_NAME:latest \
         -f ./webapp/Dockerfile ./webapp
+
+
 
     # Push images to GCR
     - docker push gcr.io/$GOOGLE_PROJECT_ID/api-$CI_ENVIRONMENT_NAME:${CI_COMMIT_SHORT_SHA}
@@ -154,7 +157,6 @@ cleanup_dev:
         gcloud container images delete gcr.io/$GOOGLE_PROJECT_ID/api-dev@$digest --quiet --force-delete-tags;
       done
 
-# Cleanup job for main
 cleanup_main:
   stage: cleanup
   only:

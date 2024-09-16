@@ -141,14 +141,8 @@ variable "gcs_bucket_name" {
   default     = "talecompendium-images"
 }
 
-variable "google_credentials_dev" {
-  description = "The contents of the GCP service account JSON file for dev"
-  type        = string
-  sensitive   = true
-}
-
-variable "google_credentials_main" {
-  description = "The contents of the GCP service account JSON file for main"
+variable "google_credentials" {
+  description = "The contents of the GCP service account JSON file"
   type        = string
   sensitive   = true
 }
