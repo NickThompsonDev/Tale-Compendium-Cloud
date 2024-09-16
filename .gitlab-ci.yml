@@ -40,7 +40,7 @@ before_script:
 # Shared template for building Docker images
 .build_template:
   script:
-    - docker build --no-cache \
+    - docker buildx build --no-cache \
         --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
         --build-arg STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY \
         --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY \
@@ -53,9 +53,11 @@ before_script:
         --build-arg NEXT_PUBLIC_WEBAPP_URL=$NEXT_PUBLIC_WEBAPP_URL \
         -t gcr.io/$GOOGLE_PROJECT_ID/api-$CI_ENVIRONMENT_NAME:${CI_COMMIT_SHORT_SHA} \
         -t gcr.io/$GOOGLE_PROJECT_ID/api-$CI_ENVIRONMENT_NAME:latest \
+        --push \
         -f ./api/Dockerfile ./api
 
-    - docker build --no-cache \
+    # Build for the webapp using buildx
+    - docker buildx build --no-cache \
         --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
         --build-arg STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY \
         --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY \
@@ -68,8 +70,8 @@ before_script:
         --build-arg NEXT_PUBLIC_WEBAPP_URL=$NEXT_PUBLIC_WEBAPP_URL \
         -t gcr.io/$GOOGLE_PROJECT_ID/webapp-$CI_ENVIRONMENT_NAME:${CI_COMMIT_SHORT_SHA} \
         -t gcr.io/$GOOGLE_PROJECT_ID/webapp-$CI_ENVIRONMENT_NAME:latest \
+        --push \
         -f ./webapp/Dockerfile ./webapp
-
 
     # Push images to GCR
     - docker push gcr.io/$GOOGLE_PROJECT_ID/api-$CI_ENVIRONMENT_NAME:${CI_COMMIT_SHORT_SHA}
