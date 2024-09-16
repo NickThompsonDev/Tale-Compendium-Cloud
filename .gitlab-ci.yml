@@ -29,10 +29,9 @@ before_script:
   # Authenticate to Google Cloud using the service account key from GitLab
   - echo "$GCP_SERVICE_ACCOUNT_KEY" | jq -r '.private_key_data' > ${CI_PROJECT_DIR}/gcp-key.json
   - gcloud auth activate-service-account --key-file=${CI_PROJECT_DIR}/gcp-key.json
-  - gcloud config set project $GCP_PROJECT_ID
+  - gcloud config set project $GOOGLE_PROJECT_ID
   # Docker login to Google Container Registry
   - gcloud auth configure-docker
-
 
 # Shared template for building Docker images
 .build_template:
@@ -102,7 +101,6 @@ build_main:
 
 # Shared template for Terraform imports and apply
 .deploy_template:
-  image: hashicorp/terraform:1.5.2
   script:
     - echo "Deploying to $CI_ENVIRONMENT_NAME environment"
     - cd terraform/$CI_ENVIRONMENT_NAME
@@ -130,8 +128,6 @@ deploy_dev:
   environment:
     name: dev
     url: https://dev.talecompendiumcloud.com
-  variables:
-    GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
 
 # Deploy to main environment
 deploy_main:
@@ -142,8 +138,6 @@ deploy_main:
   environment:
     name: main
     url: https://talecompendiumcloud.com
-  variables:
-    GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
 
 # Cleanup job for dev
 cleanup_dev:
