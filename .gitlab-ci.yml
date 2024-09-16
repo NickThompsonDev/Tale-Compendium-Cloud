@@ -1,0 +1,110 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  TF_VAR_google_credentials: $GCP_SA_KEY
+  TF_VAR_project_id: $GCP_PROJECT_ID
+  TF_VAR_clerk_publishable_key: $NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  TF_VAR_clerk_secret_key: $CLERK_SECRET_KEY
+  TF_VAR_clerk_sign_in_url: $NEXT_PUBLIC_CLERK_SIGN_IN_URL
+  TF_VAR_clerk_sign_up_url: $NEXT_PUBLIC_CLERK_SIGN_UP_URL
+  TF_VAR_clerk_webhook_secret: $CLERK_WEBHOOK_SECRET
+  TF_VAR_database_host: "database-service.default.svc.cluster.local"
+  TF_VAR_database_password: $DATABASE_PASSWORD
+  TF_VAR_next_public_api_url: "https://talecompendiumcloud.com/api"
+  TF_VAR_next_public_webapp_url: "https://talecompendiumcloud.com"
+  TF_VAR_openai_api_key: $OPENAI_API_KEY
+  TF_VAR_stripe_publishable_key: $NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  TF_VAR_stripe_secret_key: $STRIPE_SECRET_KEY
+
+before_script:
+  - apt-get update && apt-get install -y curl unzip
+  - curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.2/terraform_1.5.2_linux_amd64.zip
+  - unzip terraform.zip
+  - mv terraform /usr/local/bin/terraform
+  - docker login -u _json_key -p "$GCP_SA_KEY" https://gcr.io
+
+# Job for the dev branch (build and test, no deploy)
+build_dev:
+  stage: build
+  script:
+    - echo "Running build and tests for dev branch"
+    - docker build \
+        --no-cache \
+        --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
+        --build-arg STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY \
+        --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY \
+        --build-arg CLERK_SECRET_KEY=$CLERK_SECRET_KEY \
+        --build-arg OPENAI_API_KEY=$OPENAI_API_KEY \
+        --build-arg DATABASE_USER=$DATABASE_USER \
+        --build-arg DATABASE_PASSWORD=$DATABASE_PASSWORD \
+        --build-arg DATABASE_NAME=$DATABASE_NAME \
+        --build-arg NEXT_PUBLIC_API_URL=$TF_VAR_next_public_api_url \
+        --build-arg NEXT_PUBLIC_WEBAPP_URL=$TF_VAR_next_public_webapp_url \
+        -t api-dev \
+        -f ./api/Dockerfile ./api
+    - docker build \
+        --no-cache \
+        --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
+        --build-arg STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY \
+        --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY \
+        --build-arg CLERK_SECRET_KEY=$CLERK_SECRET_KEY \
+        --build-arg OPENAI_API_KEY=$OPENAI_API_KEY \
+        --build-arg DATABASE_USER=$DATABASE_USER \
+        --build-arg DATABASE_PASSWORD=$DATABASE_PASSWORD \
+        --build-arg DATABASE_NAME=$DATABASE_NAME \
+        --build-arg NEXT_PUBLIC_API_URL=$TF_VAR_next_public_api_url \
+        --build-arg NEXT_PUBLIC_WEBAPP_URL=$TF_VAR_next_public_webapp_url \
+        -t webapp-dev \
+        -f ./webapp/Dockerfile ./webapp
+  only:
+    - dev
+
+# Job to run Terraform and deploy on main branch
+deploy_main:
+  stage: deploy
+  script:
+    - echo "Deploying to GKE using Terraform"
+    - cd terraform
+
+    # Terraform Init
+    - terraform init -input=false
+
+    # Import existing resources (similar to your GitHub Actions)
+    - terraform import kubernetes_deployment.webapp default/webapp-deployment || echo "webapp-deployment does not exist, skipping import"
+    - terraform import kubernetes_deployment.api default/api-deployment || echo "api-deployment does not exist, skipping import"
+    - terraform import kubernetes_deployment.database default/database-deployment || echo "database-deployment does not exist, skipping import"
+    - terraform import kubernetes_service.webapp default/webapp-service || echo "webapp-service does not exist, skipping import"
+    - terraform import kubernetes_service.api default/api-service || echo "api-service does not exist, skipping import"
+    - terraform import kubernetes_service.database default/database-service || echo "database-service does not exist, skipping import"
+    - terraform import helm_release.cert_manager cert-manager/cert-manager || echo "cert-manager does not exist, skipping import"
+    - terraform import kubernetes_role_binding.cert_manager_leader_election cert-manager/cert-manager-leader-election || echo "cert-manager-leader-election does not exist, skipping import"
+    - terraform import kubernetes_manifest.letsencrypt_prod 'apiVersion=cert-manager.io/v1,kind=ClusterIssuer,name=letsencrypt-prod' || echo "letsencrypt-prod does not exist, skipping import"
+    - terraform import helm_release.nginx_ingress ingress-nginx/nginx-ingress || echo "nginx-ingress does not exist, skipping import"
+    - terraform import kubernetes_secret.gcs_sa_key default/gcs-sa-key || echo "gcs-sa-key does not exist, skipping import"
+    - terraform import kubernetes_manifest.webapp_ingress 'apiVersion=networking.k8s.io/v1,kind=Ingress,namespace=default,name=webapp-ingress' || echo "webapp-ingress does not exist, skipping import"
+    - terraform import google_storage_bucket.talecompendium_images talecompendium-images || echo "Bucket already managed, skipping import"
+    - terraform import google_service_account.api_service_account projects/$GCP_PROJECT_ID/serviceAccounts/api-sa@$GCP_PROJECT_ID.iam.gserviceaccount.com || echo "Service account already managed, skipping import"
+
+    # Terraform Apply
+    - terraform apply -auto-approve || {
+          echo "Deployment failed, selectively destroying newly created resources...";
+          terraform destroy -auto-approve;
+          exit 1;
+      }
+
+    # Cleanup old Docker images in GCR for webapp
+    - echo "Cleaning up old Docker images for webapp"
+    - gcloud container images list-tags gcr.io/$GCP_PROJECT_ID/webapp --format='get(digest)' --filter='NOT tags:(latest)' | while read digest; do
+        gcloud container images delete gcr.io/$GCP_PROJECT_ID/webapp@$digest --quiet --force-delete-tags;
+      done
+
+    # Cleanup old Docker images in GCR for api
+    - echo "Cleaning up old Docker images for api"
+    - gcloud container images list-tags gcr.io/$GCP_PROJECT_ID/api --format='get(digest)' --filter='NOT tags:(latest)' | while read digest; do
+        gcloud container images delete gcr.io/$GCP_PROJECT_ID/api@$digest --quiet --force-delete-tags;
+      done
+  only:
+    - main
