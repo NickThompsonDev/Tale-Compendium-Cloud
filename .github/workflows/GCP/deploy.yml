@@ -1,10 +1,10 @@
 # name: Deploy to GKE with DevSecOps
 
-on:
-  push:
-    branches:
-      - main
-      - dev  # Trigger for both main and dev branches
+# on:
+#   push:
+#     branches:
+#       - main
+#       - dev  # Trigger for both main and dev branches
 
 jobs:
   deploy-gke:
@@ -94,19 +94,47 @@ jobs:
       # Terraform steps to deploy to Kubernetes
       - name: Terraform Init
         working-directory: terraform/${{ env.NAMESPACE }}
+        env:
+          TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          TF_VAR_clerk_secret_key: ${{ secrets.CLERK_SECRET_KEY }}
+          TF_VAR_clerk_sign_in_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
+          TF_VAR_clerk_sign_up_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
+          TF_VAR_clerk_webhook_secret: ${{ secrets.CLERK_WEBHOOK_SECRET }}
+          TF_VAR_database_host: "database-service.default.svc.cluster.local"
+          TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+          TF_VAR_next_public_api_url: "https://talecompendiumcloud.com/api"
+          TF_VAR_next_public_webapp_url: "https://talecompendiumcloud.com"
         run: terraform init -upgrade
 
       - name: Terraform Apply
         working-directory: terraform/${{ env.NAMESPACE }}
-        run: terraform apply -auto-approve -var namespace=${{ env.NAMESPACE }}
-
+        env:
+          TF_VAR_google_credentials: ${{ secrets.GCP_SA_KEY }}
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_clerk_publishable_key: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          TF_VAR_clerk_secret_key: ${{ secrets.CLERK_SECRET_KEY }}
+          TF_VAR_clerk_sign_in_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
+          TF_VAR_clerk_sign_up_url: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
+          TF_VAR_clerk_webhook_secret: ${{ secrets.CLERK_WEBHOOK_SECRET }}
+          TF_VAR_database_host: "database-service.default.svc.cluster.local"
+          TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          TF_VAR_stripe_publishable_key: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+          TF_VAR_next_public_api_url: "https://talecompendiumcloud.com/api"
+          TF_VAR_next_public_webapp_url: "https://talecompendiumcloud.com"
+        run: terraform apply -auto-approve
 
       # Post-deployment vulnerability scan using Trivy directly (on Kubernetes)
       - name: Post-Deployment Vulnerability Scan with Trivy
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
           trivy k8s --namespace ${NAMESPACE} --severity CRITICAL,HIGH --format table
-
 
       # Cleanup old Docker images in GCR for webapp
       - name: Cleanup old Docker images in GCR (for webapp)

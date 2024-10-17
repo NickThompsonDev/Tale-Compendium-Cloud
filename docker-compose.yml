@@ -26,5 +26,20 @@ services:
       - "5000:5000"
     depends_on:
       - database
+      - minio
     env_file:
       - .env.local
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    env_file:
+      - .env.local
+
+volumes:
+  minio-data:

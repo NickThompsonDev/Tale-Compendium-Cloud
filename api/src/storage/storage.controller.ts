@@ -38,12 +38,11 @@ export class StorageController {
   ): Promise<{ id: number; filename: string; imageUrl: string }> {
     this.logger.log(`Uploading file: ${file.originalname}`);
 
-    const { id, filename, imageUrl } =
-      await this.storageService.uploadFileToGCS(
-        file.buffer,
-        file.originalname,
-        file.mimetype,
-      );
+    const { id, filename, imageUrl } = await this.storageService.uploadFile(
+      file.buffer,
+      file.originalname,
+      file.mimetype,
+    );
 
     this.logger.log(
       `File uploaded with ID: ${id}, filename: ${filename}, and URL: ${imageUrl}`,
@@ -59,6 +58,6 @@ export class StorageController {
   ): Promise<void> {
     this.logger.log(`Retrieving file for storage ID: ${storageId}`);
     const fileUrl = await this.storageService.getFileUrlByStorageId(storageId);
-    res.redirect(fileUrl); // Redirect to the file URL in GCS
+    res.redirect(fileUrl); // Redirect to the file URL
   }
 }

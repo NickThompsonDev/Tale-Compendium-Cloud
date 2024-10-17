@@ -19,6 +19,11 @@ export class StorageEntity {
   @ApiProperty()
   imageUrl: string; // Stores the public URL of the image
 
+  // Optionally track where the file is stored (GCS, MinIO, Azure)
+  @Column({ nullable: true })
+  @ApiProperty({ description: 'Storage provider (gcs, minio, azure)' })
+  storageProvider: string;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   @ApiProperty()
   createdAt: Date;
